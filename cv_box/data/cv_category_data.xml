@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Sequence ───────────────────────────────────────────────── -->
+    <record id="seq_cv_box" model="ir.sequence">
+        <field name="name">CV Box Reference</field>
+        <field name="code">cv.box</field>
+        <field name="prefix">CV/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- ── Default Work Categories ───────────────────────────────── -->
+    <record id="cat_software_dev" model="cv.category">
+        <field name="name">Software Developer</field>
+        <field name="code">SW-DEV</field>
+        <field name="sequence">1</field>
+        <field name="color">1</field>
+        <field name="description">Backend, Frontend, Full-stack development roles.</field>
+    </record>
+
+    <record id="cat_accountant" model="cv.category">
+        <field name="name">Accountant / Finance</field>
+        <field name="code">ACCT</field>
+        <field name="sequence">2</field>
+        <field name="color">3</field>
+        <field name="description">Accounting, bookkeeping, financial analysis.</field>
+    </record>
+
+    <record id="cat_hr" model="cv.category">
+        <field name="name">Human Resources</field>
+        <field name="code">HR</field>
+        <field name="sequence">3</field>
+        <field name="color">5</field>
+        <field name="description">HR management, recruitment, payroll.</field>
+    </record>
+
+    <record id="cat_graphic" model="cv.category">
+        <field name="name">Graphic Designer</field>
+        <field name="code">GFX</field>
+        <field name="sequence">4</field>
+        <field name="color">6</field>
+        <field name="description">UI/UX, branding, print and digital design.</field>
+    </record>
+
+    <record id="cat_sales" model="cv.category">
+        <field name="name">Sales &amp; Marketing</field>
+        <field name="code">SALES</field>
+        <field name="sequence">5</field>
+        <field name="color">2</field>
+        <field name="description">Sales executive, marketing specialist, digital marketing.</field>
+    </record>
+
+    <record id="cat_driver" model="cv.category">
+        <field name="name">Driver / Logistics</field>
+        <field name="code">DRV</field>
+        <field name="sequence">6</field>
+        <field name="color">4</field>
+        <field name="description">Delivery driver, logistics coordinator, warehouse.</field>
+    </record>
+
+    <record id="cat_admin" model="cv.category">
+        <field name="name">Admin / Clerical</field>
+        <field name="code">ADMIN</field>
+        <field name="sequence">7</field>
+        <field name="color">7</field>
+        <field name="description">Office administration, data entry, reception.</field>
+    </record>
+
+    <record id="cat_engineer" model="cv.category">
+        <field name="name">Engineer (Civil / Mechanical)</field>
+        <field name="code">ENG</field>
+        <field name="sequence">8</field>
+        <field name="color">9</field>
+        <field name="description">Civil, mechanical, electrical engineering roles.</field>
+    </record>
+
+</odoo>

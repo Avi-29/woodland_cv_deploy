@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_cv_category_user,cv.category.user,model_cv_category,base.group_user,1,1,1,0
+access_cv_category_manager,cv.category.manager,model_cv_category,base.group_system,1,1,1,1
+access_cv_box_user,cv.box.user,model_cv_box,base.group_user,1,1,1,0
+access_cv_box_manager,cv.box.manager,model_cv_box,base.group_system,1,1,1,1

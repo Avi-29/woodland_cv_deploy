@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Tree / List View ──────────────────────────────────────── -->
+    <record id="view_cv_category_list" model="ir.ui.view">
+        <field name="name">cv.category.list</field>
+        <field name="model">cv.category</field>
+        <field name="arch" type="xml">
+            <list string="Work Categories" editable="top">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="description"/>
+                <field name="cv_count" string="# CVs"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Form View ─────────────────────────────────────────────── -->
+    <record id="view_cv_category_form" model="ir.ui.view">
+        <field name="name">cv.category.form</field>
+        <field name="model">cv.category</field>
+        <field name="arch" type="xml">
+            <form string="Work Category">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_cvs"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o">
+                            <field name="cv_count" widget="statinfo" string="CVs"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Category Details">
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="color" widget="color_picker"/>
+                        </group>
+                        <group string="Status">
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description" placeholder="Describe what skills / tasks this category covers…"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Search View ───────────────────────────────────────────── -->
+    <record id="view_cv_category_search" model="ir.ui.view">
+        <field name="name">cv.category.search</field>
+        <field name="model">cv.category</field>
+        <field name="arch" type="xml">
+            <search string="Search Categories">
+                <field name="name"/>
+                <field name="code"/>
+                <filter string="Active" name="active" domain="[('active','=',True)]"/>
+                <filter string="Archived" name="archived" domain="[('active','=',False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Window Action ─────────────────────────────────────────── -->
+    <record id="action_cv_category" model="ir.actions.act_window">
+        <field name="name">Work Categories</field>
+        <field name="res_model">cv.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_cv_category_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Work Category
+            </p>
+            <p>
+                Work Categories define which skills / roles a CV pool belongs to,
+                e.g. "Software Developer", "Accountant", "Graphic Designer".
+            </p>
+        </field>
+    </record>
+
+</odoo>

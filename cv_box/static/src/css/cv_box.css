@@ -1,0 +1,47 @@
+/* ── CV Box — custom styles ──────────────────────────────────────── */
+
+/* Upload field: make it more prominent */
+.cv_upload_field {
+    border: 2px dashed #a0b3c6;
+    border-radius: 8px;
+    padding: 12px;
+    background: #f8fbff;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+.cv_upload_field:hover {
+    border-color: #017e84;
+}
+
+/* PDF preview container */
+.cv_preview_container {
+    margin-top: 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+}
+.cv_preview_container h4 {
+    margin: 0;
+    padding: 8px 12px;
+    background: #f0f0f0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Kanban card polish */
+.o_kanban_record .badge {
+    font-size: 11px;
+}
+
+/* Status-bar coloring for hired/rejected */
+.o_statusbar_status button[data-value="hired"] {
+    color: #28a745 !important;
+    font-weight: 700;
+}
+.o_statusbar_status button[data-value="rejected"] {
+    color: #dc3545 !important;
+    font-weight: 700;
+}

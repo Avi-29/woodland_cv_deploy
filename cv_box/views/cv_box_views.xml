@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         FORM VIEW
+    ══════════════════════════════════════════════════════════════ -->
+    <record id="view_cv_box_form" model="ir.ui.view">
+        <field name="name">cv.box.form</field>
+        <field name="model">cv.box</field>
+        <field name="arch" type="xml">
+            <form string="CV">
+                <!-- Status-bar buttons -->
+                <header>
+                </header>
+
+                <sheet>
+                    <!-- Smart Buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_download_cv"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-download"
+                                invisible="not cv_file">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Download CV</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Profile photo + title -->
+                    <field name="image_1024" widget="image"
+                           class="oe_avatar" options="{'preview_image': 'image_1024'}"/>
+                    <div class="oe_title">
+                        <label for="name" string="Applicant Name"/>
+                        <h1>
+                            <field name="name" placeholder="Full Name…"/>
+                        </h1>
+                        <div class="o_row">
+                            <field name="reference" readonly="1"/>
+                        </div>
+                    </div>
+
+                    <!-- Main fields -->
+                    <group>
+                        <group string="Work Information">
+                            <field name="category_id"
+                                   options="{'no_create': False, 'no_open': False}"/>
+                            <field name="job_position"/>
+                            <field name="source"/>
+                            <field name="date_received"/>
+                            <field name="date_available"/>
+                        </group>
+                        <group string="Contact Details">
+                            <field name="email" widget="email"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="mobile" widget="phone"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Experience &amp; Education">
+                            <field name="experience_years"/>
+                            <field name="education"/>
+                            <field name="education_detail"/>
+                        </group>
+                        <group string="Compensation">
+                            <field name="expected_salary"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+
+                    <!-- Notebook -->
+                    <notebook>
+                        <!-- CV Upload Tab -->
+                        <page string="CV File" name="cv_file_page">
+                            <group>
+                                <field name="cv_file"
+                                       filename="cv_filename"
+                                       widget="binary"
+                                       string="CV Document"
+                                       class="cv_upload_field"/>
+                                <field name="cv_filename" invisible="1"/>
+                                <field name="cv_mimetype" readonly="1"
+                                       invisible="not cv_filename"/>
+                            </group>
+                            <!-- Inline PDF preview when file is a PDF -->
+                            <div class="cv_preview_container"
+                                 invisible="cv_mimetype != 'application/pdf' or not cv_file">
+                                <h4>Preview</h4>
+                                <field name="cv_file" widget="pdf_viewer"/>
+                            </div>
+                        </page>
+
+                        <!-- Skills Tab -->
+                        <page string="Skills &amp; Summary" name="skills_page">
+                            <field name="skills_summary"
+                                   placeholder="• Python, Django, REST APIs&#10;• PostgreSQL, Redis&#10;• Docker, CI/CD…"
+                                   style="min-height:120px;"/>
+                        </page>
+
+                        <!-- Notes Tab -->
+                        <page string="Internal Notes" name="notes_page">
+                            <field name="notes" placeholder="Internal recruiter notes…"/>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <!-- Chatter -->
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         LIST VIEW
+    ══════════════════════════════════════════════════════════════ -->
+    <record id="view_cv_box_list" model="ir.ui.view">
+        <field name="name">cv.box.list</field>
+        <field name="model">cv.box</field>
+        <field name="arch" type="xml">
+            <list string="CVs">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="job_position"/>
+                <field name="experience_years" string="Exp. (Yrs)"/>
+                <field name="email"/>
+                <field name="phone"/>
+                <field name="date_received"/>
+                <field name="cv_file" string="Has CV" widget="boolean"
+                       optional="show"/>
+            </list>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         KANBAN VIEW
+    ══════════════════════════════════════════════════════════════ -->
+    <record id="view_cv_box_kanban" model="ir.ui.view">
+        <field name="name">cv.box.kanban</field>
+        <field name="model">cv.box</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="category_id"
+                    class="o_kanban_small_column"
+                    group_create="false">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="job_position"/>
+                <field name="experience_years"/>
+                <field name="email"/>
+                <field name="image_1024"/>
+                <field name="cv_file"/>
+                <field name="color"/>
+                <templates>
+                    <t t-name="card">
+                        <div t-attf-class="oe_kanban_color_#{record.color.value}">
+                            <div class="oe_kanban_global_click">
+                                <!-- Header row -->
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <img t-if="record.image_1024.value"
+                                         t-att-src="'data:image/png;base64,' + record.image_1024.value"
+                                         class="rounded-circle"
+                                         style="width:40px;height:40px;object-fit:cover;"/>
+                                    <div t-else="" class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+                                         style="width:40px;height:40px;font-size:18px;color:#fff;">
+                                        <span t-esc="record.image_1024.value"/>
+                                    </div>
+                                    <div>
+                                        <strong t-esc="record.name.value"/>
+                                        <div class="text-muted small" t-esc="record.job_position.value"/>
+                                    </div>
+                                </div>
+
+                                <!-- Category badge -->
+                                <div class="mb-1">
+                                    <span class="badge text-bg-primary"
+                                          t-esc="record.category_id.value"/>
+                                </div>
+
+                                <!-- Experience -->
+                                <div class="text-muted small">
+                                    <i class="fa fa-briefcase"/> <t t-esc="record.experience_years.value"/> yrs exp
+                                </div>
+
+                                <!-- CV indicator -->
+                                <div t-if="record.cv_file.value" class="text-success small mt-1">
+                                    <i class="fa fa-file-pdf-o"/> CV Uploaded
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SEARCH VIEW
+    ══════════════════════════════════════════════════════════════ -->
+    <record id="view_cv_box_search" model="ir.ui.view">
+        <field name="name">cv.box.search</field>
+        <field name="model">cv.box</field>
+        <field name="arch" type="xml">
+            <search string="Search CVs">
+                <field name="name"/>
+                <field name="reference"/>
+                <field name="category_id"/>
+                <field name="job_position"/>
+                <field name="email"/>
+
+                    <filter string="Work Category" name="g_category"  context="{'group_by':'category_id'}"/>
+                    <filter string="Source"        name="g_source"    context="{'group_by':'source'}"/>
+                    <filter string="Education"     name="g_edu"       context="{'group_by':'education'}"/>
+                    <filter string="Date Received" name="g_date"      context="{'group_by':'date_received:month'}"/>
+
+            </search>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         WINDOW ACTIONS
+    ══════════════════════════════════════════════════════════════ -->
+    <record id="action_cv_box_all" model="ir.actions.act_window">
+        <field name="name">All CVs</field>
+        <field name="res_model">cv.box</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_cv_box_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Upload your first CV!</p>
+            <p>Create a CV record, attach the file, and assign a Work Category.</p>
+        </field>
+    </record>
+
+    <record id="action_cv_box_kanban" model="ir.actions.act_window">
+        <field name="name">CVs by Category</field>
+        <field name="res_model">cv.box</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_cv_box_search"/>
+        <field name="context">{'search_default_g_category': 1}</field>
+    </record>
+
+</odoo>

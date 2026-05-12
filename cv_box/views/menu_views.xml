@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Top-Level Menu ────────────────────────────────────────── -->
+    <menuitem id="menu_cv_box_root"
+              name="CV Box"
+              sequence="80"
+              web_icon="cv_box,static/description/icon.png"/>
+
+    <!-- ── CV Sub-Menus ──────────────────────────────────────────── -->
+    <menuitem id="menu_cv_box_cvs"
+              name="CVs"
+              parent="menu_cv_box_root"
+              sequence="10"/>
+
+    <menuitem id="menu_cv_box_all"
+              name="All CVs"
+              parent="menu_cv_box_cvs"
+              action="action_cv_box_all"
+              sequence="10"/>
+
+    <menuitem id="menu_cv_box_by_category"
+              name="CVs by Category"
+              parent="menu_cv_box_cvs"
+              action="action_cv_box_kanban"
+              sequence="20"/>
+
+    <!-- ── Configuration Sub-Menu ────────────────────────────────── -->
+    <menuitem id="menu_cv_box_config"
+              name="Configuration"
+              parent="menu_cv_box_root"
+              sequence="90"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_cv_box_categories"
+              name="Work Categories"
+              parent="menu_cv_box_config"
+              action="action_cv_category"
+              sequence="10"
+              groups="base.group_system"/>
+
+</odoo>
