@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ─── User Sync Wizard ─────────────────────────────────────────────── -->
+    <record id="view_zk_user_sync_wizard_form" model="ir.ui.view">
+        <field name="name">zk.user.sync.wizard.form</field>
+        <field name="model">zk.user.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Sync Enrolled Users to Devices">
+
+                <!-- Config step -->
+                <group invisible="state == 'done'">
+                    <group string="What to sync">
+                        <field name="sync_mode" widget="radio"/>
+                        <field name="source_device_id"
+                               invisible="sync_mode != 'device_to_device'"/>
+                        <field name="user_ids" widget="many2many_tags"
+                               invisible="sync_mode not in ['selected_users']"/>
+                    </group>
+                    <group string="Send to">
+                        <field name="target_device_ids" widget="many2many_tags"/>
+                    </group>
+                    <group string="Include">
+                        <field name="include_fingerprints"/>
+                        <field name="include_faces"/>
+                        <field name="include_cards"/>
+                    </group>
+                    <group string="Options">
+                        <field name="force_resync"/>
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not force_resync">
+                            <strong>Force re-sync is ON.</strong>
+                            All biometric data will be re-queued regardless of
+                            what the devices already have. With large employee
+                            counts this can create thousands of commands.
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Done step -->
+                <group invisible="state == 'draft'">
+                    <div class="alert alert-success" role="alert">
+                        <i class="fa fa-check-circle me-1" title="queued_count"/>
+                        <strong><field name="queued_count" readonly="1"/> command(s)</strong> queued,
+                        <strong><field name="skipped_count" readonly="1"/></strong> skipped (already on device).
+                        Commands will be delivered on each device's next heartbeat poll.
+                    </div>
+                    <field name="summary" widget="text" readonly="1" nolabel="1"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_sync" type="object" string="Sync Now"
+                            class="btn-primary" invisible="state == 'done'"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_zk_user_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sync Users to Devices</field>
+        <field name="res_model">zk.user.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ─── Quick Command Wizard ─────────────────────────────────────────── -->
+    <record id="view_zk_quick_command_wizard_form" model="ir.ui.view">
+        <field name="name">zk.quick.command.wizard.form</field>
+        <field name="model">zk.quick.command.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Send ADMS Command">
+
+                <group invisible="state == 'done'">
+                    <group string="Target">
+                        <field name="device_ids" widget="many2many_tags"/>
+                        <field name="note" placeholder="Optional label for this command"/>
+                    </group>
+                    <group string="Command">
+                        <field name="command_type"/>
+                        <field name="command_help" readonly="1" invisible="not command_help"/>
+                        <field name="command_template" readonly="1" string="Template"
+                               invisible="command_type == 'custom'"/>
+                    </group>
+                    <!-- Dynamic parameter fields shown based on command -->
+                    <group string="Parameters"
+                           invisible="command_type in ['get_all_userinfo','get_all_fp','get_attlog','clear_attlog','reboot','enable_device','disable_device','clear_admin','reset_device']">
+                        <field name="param_pin"
+                               invisible="command_type not in ['enroll_user','delete_user','enroll_fp','delete_fp','get_new_attlog','enroll_face','delete_face']"/>
+                        <field name="param_name"
+                               invisible="command_type != 'enroll_user'"/>
+                        <field name="param_finger_id"
+                               invisible="command_type not in ['enroll_fp','delete_fp']"/>
+                        <field name="param_template"
+                               invisible="command_type not in ['enroll_fp','enroll_face']"/>
+                        <field name="param_start_time"
+                               invisible="command_type != 'get_new_attlog'"/>
+                        <field name="param_end_time"
+                               invisible="command_type != 'get_new_attlog'"/>
+                        <field name="param_duration"
+                               invisible="command_type != 'open_door'"/>
+                        <field name="param_message"
+                               invisible="command_type != 'write_lcd'"/>
+                        <field name="param_datetime"
+                               invisible="command_type != 'set_time'"/>
+                        <field name="custom_cmd" widget="text"
+                               invisible="command_type != 'custom'"
+                               placeholder="Enter raw ADMS command string, e.g. CONTROL DEVICE 2 0 5 0 0"/>
+                    </group>
+                </group>
+
+                <!-- Done -->
+                <group invisible="state == 'draft'">
+                    <div class="alert alert-success" role="alert">
+                        <i class="fa fa-check-circle me-1" title="queued_count"/>
+                        <strong><field name="queued_count" readonly="1"/> command(s)</strong> queued.
+                    </div>
+                    <field name="result_summary" widget="text" readonly="1" nolabel="1"/>
+                </group>
+
+                <field name="state" invisible="1"/>
+
+                <footer>
+                    <button name="action_send" type="object" string="Send Command"
+                            class="btn-primary" invisible="state == 'done'"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_zk_quick_command_wizard" model="ir.actions.act_window">
+        <field name="name">Send Device Command</field>
+        <field name="res_model">zk.quick.command.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

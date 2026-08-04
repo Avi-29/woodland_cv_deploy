@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="inherit_view_attendance_tree" model="ir.ui.view">
+        <field name="name">view.attendance.tree.inherit</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+        <field name="arch" type="xml">
+
+            <!-- Add header button -->
+            <xpath expr="//list" position="inside">
+                <header>
+                    <button name="action_remove_late_attendance"
+                            type="object"
+                            string="Remove Late"
+                            class="btn-primary"
+                    />
+                </header>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Attendance Form — add our extra fields
+    ============================================================ -->
+    <record id="view_attendance_employee_from_inherit" model="ir.ui.view">
+        <field name="name">hr.attendance.employee.form.inherit</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_employee_simple_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="field[@name='check_out']" position="after">
+                <field name="is_late"/>
+                <field name="marked_as_day_off"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_attendance_form_inherit" model="ir.ui.view">
+        <field name="name">hr.attendance.form.inherit</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+
+                <!-- Approve Button -->
+                <button name="action_approve_overtime"
+                        string="Approve OT"
+                        type="object"
+                        class="btn-primary"
+                        invisible="overtime_status not in ['to_approve'] "/>
+
+                <!-- Refuse Button -->
+                <button name="action_refuse_overtime"
+                        string="Refuse OT"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="overtime_status not in ['to_approve'] "/>
+
+            </xpath>
+            <xpath expr="//field[@name='check_out']" position="after">
+                <field name="shift_id"/>
+                <field name="break_start"/>
+                <field name="break_end"/>
+            </xpath>
+            <xpath expr="//group/group[2]" position="inside">
+                <field name="hours_to_approve" string="Hours To Approve"
+                       invisible="overtime_status not in ['to_approve'] "/>
+                <field name="is_late"/>
+                <field name="marked_as_day_off"/>
+                <field name="notes"/>
+            </xpath>
+            <xpath expr="//notebook/page[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group/group[2]/div" position="replace">
+                <div>
+                    <field name="validated_overtime_hours"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+    <record id="hr_attendance.hr_attendance_action" model="ir.actions.act_window">
+        <field name="name">Attendances</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="context">
+            {'group_by': ['check_in:month', 'check_in:day']}
+        </field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('hr_attendance.view_attendance_tree')}),
+        ]"/>
+    </record>
+
+    <!-- ============================================================
+         Employee Form — add is_12_hour_shift + worker_type
+    ============================================================ -->
+    <record id="view_hr_employee_form_inherit_shift_group" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.shift</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='department_id']" position="after">
+                <field name="worker_type" string="Worker Type"/>
+                <field name="joining_date"/>
+                <field name="is_ot_eligible"/>
+                <field name="is_12_hour_shift" string="12-Hour Shift Employee"
+                       help="Enable for Day (06:00-18:00) / Night (18:00-06:00) employees. Prevents shift window overlap mismatches."/>
+
+            </xpath>
+
+            <xpath expr="//page[@name='resume']" position="replace">
+            </xpath>
+            <xpath expr="//page[@name='hr_settings']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='personal_information']/group/group[2]" position="replace">
+            </xpath>
+            <xpath expr="//page[@name='personal_information']/group/group[3]" position="replace">
+            </xpath>
+            <xpath expr="//group[@name='contract']" position="after">
+                <group string="Bank Account No.">
+                    <field name="bank_acc_no"/>
+                    <field name="bank_name"/>
+                </group>
+            </xpath>
+            <xpath expr="//page[@name='personal_information']/group/group" position="replace">
+                <group string="Personal Information" name="hr_birth_group">
+                    <field name="legal_name"/>
+                    <field name="fathers_name" string="Father's Name"/>
+                    <field name="mothers_name" string="Mother's Name"/>
+                     <field name="sex" string="Gender"/>
+                     <field name="blood_group" string="Blood Group"/>
+                    <label for="birthday"/>
+                    <div class="o_row" name="div_km_home_work">
+                        <field name="birthday" class="o_hr_narrow_field"/>
+                        <span invisible="not birthday">
+                            <label for="birthday_public_display" class="fw-bold text-900 form-check-label ms-3"/>
+                            <field name="birthday_public_display" class="ms-3"/>
+                        </span>
+                    </div>
+                    <label for="place_of_birth"/>
+                    <div class="o_row" name="birth_location">
+                        <field name="place_of_birth" class="oe_inline o_hr_narrow_field" nolabel="1"
+                               placeholder="City"/>
+                        <div class="mx-3 flex-grow-0">─</div>
+                        <field name="country_of_birth" class="oe_inline o_hr_narrow_field" nolabel="1"
+                               placeholder="Country"/>
+                    </div>
+
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Attendance Search / Filters
+    ============================================================ -->
+    <record id="view_hr_attendance_search_inherit_shift" model="ir.ui.view">
+        <field name="name">hr.attendance.search.shift</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+
+                <filter name="filter_day_off"
+                        string="Day Off"
+                        domain="[('marked_as_day_off','=',True)]"/>
+                <filter name="filter_late"
+                        string="Late"
+                        domain="[('is_late','=',True)]"/>
+                <searchpanel>
+                    <field name="department_id"/>
+                    <field name="shift_id" string="Shift"/>
+                    <field name="worker_type" string="Worker Type" icon="fa-user-tag"/>
+                </searchpanel>
+            </xpath>
+            <xpath expr="//filter[@name='employee']" position="after">
+                <filter name="group_by_department"
+                        string="Department"
+                        context="{'group_by': 'department_id'}"/>
+                <filter name="group_by_shift"
+                        string="Shift"
+                        context="{'group_by': 'shift_id'}"/>
+                <filter name="group_by_day"
+                        string="Day"
+                        context="{'group_by': 'check_in:day'}"/>
+            </xpath>
+            <xpath expr="//search" position="inside">
+                <field name="zk_teco"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Employee Search — worker_type panel
+    ============================================================ -->
+    <record id="hr_employee_view_search_inherit_worker_type" model="ir.ui.view">
+        <field name="name">hr.employee.search.worker.type</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//searchpanel" position="inside">
+                <field name="worker_type" string="Worker Type" icon="fa-user-tag" enable_counters="1"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Employee Kanban — show worker_type (no shift_group any more)
+    ============================================================ -->
+    <record id="view_employee_kanban_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.kanban.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+        <field name="arch" type="xml">
+            <xpath expr="//main/div" position="after">
+                <div>
+                    Department:
+                    <field name="department_id"/>
+                </div>
+                <div>
+                    Worker Type:
+                    <field name="worker_type"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+    <!-- ============================================================
+     Day-Off List view  (filtered hr.attendance)
+============================================================ -->
+    <record id="view_day_off_list" model="ir.ui.view">
+        <field name="name">hr.attendance.day_off.list</field>
+        <field name="model">hr.attendance</field>
+        <field name="arch" type="xml">
+            <list string="Day-Off Records" default_order="check_in desc">
+                <header>
+                    <button name="action_remove_dayoff_attendance"
+                            string="Remove Day Off"
+                            type="object"
+                            class="btn-warning"
+                            confirm="Clear marked_as_day_off for selected records?"/>
+                </header>
+                <field name="employee_id"/>
+                <field name="department_id" optional="show"/>
+                <field name="check_in" string="Punch Time"/>
+                <field name="shift_id" string="Nearest Shift"/>
+                <field name="notes"/>
+                <field name="marked_as_day_off" invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Day-Off Search view
+    ============================================================ -->
+    <record id="view_day_off_search" model="ir.ui.view">
+        <field name="name">hr.attendance.day_off.search</field>
+        <field name="model">hr.attendance</field>
+        <field name="arch" type="xml">
+            <search string="Day-Off Search">
+                <field name="employee_id"/>
+                <filter name="this_month"
+                        string="This Month"
+                        domain="[('check_in','&gt;=',(context_today()).strftime('%Y-%m-01'))]"/>
+                <filter name="group_employee"
+                        string="Employee"
+                        context="{'group_by':'employee_id'}"/>
+                <filter name="group_day"
+                        string="Day"
+                        context="{'group_by':'check_in:day'}"/>
+                <searchpanel>
+                    <field name="department_id"/>
+                    <field name="worker_type" string="Worker Type" icon="fa-user-tag"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Action — Day-Off records only
+    ============================================================ -->
+    <record id="action_day_off_attendance" model="ir.actions.act_window">
+        <field name="name">Day-Off Records</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('marked_as_day_off','=',True)]</field>
+        <field name="context">{'group_by': ['check_in:day']}</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_day_off_list')}),
+        ]"/>
+    </record>
+    <record id="action_late_attendance" model="ir.actions.act_window">
+        <field name="name">Late Arrivals</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_late','=',True)]</field>
+        <field name="context">{'search_default_this_month': 1}</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('hr_attendance.view_attendance_tree')}),
+        ]"/>
+    </record>
+    <record id="view_attendance_ot_approval_tree" model="ir.ui.view">
+        <field name="name">hr.attendance.ot.approval.tree</field>
+        <field name="model">hr.attendance</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Approval" decoration-success="overtime_status == 'approved'"
+                  decoration-danger="overtime_status == 'refused'"
+                  decoration-warning="overtime_status == 'to_approve'">
+                <field name="employee_id"/>
+                <field name="check_in"/>
+                <field name="check_out"/>
+                <field name="worked_hours"/>
+                <field name="overtime_hours"/>
+                <field name="overtime_status"/>
+
+                <!-- Approve Button -->
+                <button name="action_approve_overtime"
+                        string="Approve"
+                        type="object"
+                        class="btn-success"
+                        invisible="overtime_status != 'to_approve'"/>
+
+                <!-- Refuse Button -->
+                <button name="action_refuse_overtime"
+                        string="Refuse"
+                        type="object"
+                        class="btn-danger"
+                        invisible="overtime_status != 'to_approve'"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_attendance_ot_approval_search" model="ir.ui.view">
+        <field name="name">hr.attendance.ot.approval.search</field>
+        <field name="model">hr.attendance</field>
+        <field name="arch" type="xml">
+            <search string="Search Attendance">
+                <searchpanel>
+                    <field name="department_id"/>
+                    <field name="shift_id"/>
+                </searchpanel>
+
+                <!-- Quick Filters -->
+                <filter name="to_approve"
+                        string="To Approve"
+                        domain="[('overtime_status','=','to_approve')]"
+                        help="Pending approvals"/>
+
+                <filter name="approved"
+                        string="Approved"
+                        domain="[('overtime_status','=','approved')]"/>
+
+                <filter name="refused"
+                        string="Refused"
+                        domain="[('overtime_status','=','refused')]"/>
+
+                <!-- Worker Type -->
+                <filter name="regular_emp"
+                        string="Regular Employees"
+                        domain="[('worker_type','=','regular')]"/>
+
+                <filter name="daily_emp"
+                        string="Daily Employees"
+                        domain="[('worker_type','=','daily')]"/>
+
+                <!-- Date Filters -->
+                <filter name="today"
+                        string="Today"
+                        domain="[('check_in','>=', context_today())]"/>
+
+                <filter name="this_week"
+                        string="This Week"
+                        domain="[('check_in','>=', (context_today() - relativedelta(days=7)))]"/>
+
+                <filter name="group_employee"
+                        string="Employee"
+                        context="{'group_by':'employee_id'}"/>
+
+                <filter name="group_status"
+                        string="Status"
+                        context="{'group_by':'overtime_status'}"/>
+
+
+            </search>
+        </field>
+    </record>
+    <record id="action_regular_attendance_approval" model="ir.actions.act_window">
+        <field name="name">Regular OT Approval</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,form</field>
+
+        <field name="domain">
+            [
+            ('worker_type', '=', 'regular'),
+            ('check_out', '!=', False)
+            ]
+        </field>
+
+        <field name="context">
+            {
+            "search_default_to_approve": 1,
+            }
+        </field>
+
+        <field name="search_view_id" ref="view_attendance_ot_approval_search"/>
+
+        <field name="view_ids" eval="[
+        (5, 0, 0),
+        (0, 0, {'view_mode': 'list', 'view_id': ref('view_attendance_ot_approval_tree')})
+    ]"/>
+    </record>
+    <record id="action_daily_attendance_approval" model="ir.actions.act_window">
+        <field name="name">Daily OT Approval</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,form</field>
+
+        <field name="domain">
+            [
+            ('worker_type', '=', 'daily'),
+            ('check_out', '!=', False)
+            ]
+        </field>
+
+        <field name="context">
+            {
+            "search_default_to_approve": 1,
+            }
+        </field>
+
+        <field name="search_view_id" ref="view_attendance_ot_approval_search"/>
+
+        <field name="view_ids" eval="[
+        (5, 0, 0),
+        (0, 0, {'view_mode': 'list', 'view_id': ref('view_attendance_ot_approval_tree')})
+    ]"/>
+    </record>
+    <record id="hr_department_form_inherit_morning_shift" model="ir.ui.view">
+        <field name="name">hr.department.form.inherit.morning.shift</field>
+        <field name="model">hr.department</field>
+        <field name="inherit_id" ref="hr.view_department_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Add after department name -->
+            <xpath expr="//field[@name='color']" position="before">
+                <field name="is_morning_shift"/>
+                <field name="eligible_for_bonus"/>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

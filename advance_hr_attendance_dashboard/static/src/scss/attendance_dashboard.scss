@@ -1,0 +1,421 @@
+ // ─── Advance HR Attendance Dashboard – v3 SCSS ────────────────────────────────
+
+$pri:      #4f46e5;
+$pri-lt:   #ede9fe;
+$border:   #e2e8f0;
+$radius:   8px;
+$shadow:   0 1px 4px rgba(0,0,0,.07);
+
+// ── Odoo Container Alignment ──────────────────────────────────────────────────
+.o_action_manager,
+.o_action,
+.o_content {
+    height: 100% !important;
+}
+
+// ── Root wrapper ──────────────────────────────────────────────────────────────
+.ahad_wrapper {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #f8fafc;
+
+    height: 100% !important;       // Match Odoo's viewport height limits
+    display: flex;
+    flex-direction: column;
+
+    // FIX: The entire dashboard acts as the main single-page vertical scroll layer
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    padding: 18px 22px 32px;
+    box-sizing: border-box;
+    color: #1e293b;
+    user-select: none;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.ahad_header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 14px 18px; margin-bottom: 14px; box-shadow: $shadow;
+    flex-shrink: 0; // Don't let it squash when page contents expand
+}
+.ahad_header_left { display: flex; align-items: center; gap: 10px; }
+.ahad_title_icon  { font-size: 22px; }
+.ahad_title  { margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; }
+.ahad_subtitle { font-size: 11.5px; color: #64748b; }
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+.ahad_btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer; border: none;
+    transition: background .12s, box-shadow .12s;
+}
+.ahad_btn_primary {
+    background: $pri; color: #fff;
+    &:hover { background: #4338ca; }
+}
+.ahad_btn_outline {
+    background: #fff; border: 1px solid $border; color: #374151;
+    &:hover { background: #f1f5f9; }
+}
+.ahad_btn_ghost {
+    background: transparent; color: #64748b;
+    &:hover { background: #f1f5f9; }
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+.ahad_toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 10px 14px; margin-bottom: 10px; box-shadow: $shadow;
+    flex-shrink: 0; // Don't let it squash
+}
+.ahad_label {
+    display: block; font-size: 10.5px; font-weight: 600;
+    color: #64748b; text-transform: uppercase; letter-spacing: .5px;
+    margin-bottom: 3px;
+}
+.ahad_select {
+    padding: 6px 9px; border: 1px solid $border; border-radius: 6px;
+    font-size: 13px; background: #fff; color: #1e293b; min-width: 120px;
+    &:focus { outline: none; border-color: $pri; box-shadow: 0 0 0 2px $pri-lt; }
+}
+.ahad_select_sm { min-width: 68px; }
+.ahad_popup_full { width: 100%; }
+
+.ahad_search_group { flex: 1; min-width: 220px; }
+.ahad_search_box   { position: relative; display: flex; align-items: center; gap: 6px; }
+.ahad_search_icon  { position: absolute; left: 9px; color: #94a3b8; font-size: 12px; pointer-events: none; }
+.ahad_search_input {
+    flex: 1; padding: 6px 9px 6px 28px;
+    border: 1px solid $border; border-radius: 6px; font-size: 13px;
+    &:focus { outline: none; border-color: $pri; box-shadow: 0 0 0 2px $pri-lt; }
+}
+.ahad_search_btn {
+    padding: 6px 12px; background: $pri; color: #fff; border: none;
+    border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;
+    white-space: nowrap;
+    &:hover { background: #4338ca; }
+}
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+.ahad_legend {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 8px 14px; background: #fff; border: 1px solid $border;
+    border-radius: $radius; margin-bottom: 10px;
+    font-size: 12px; color: #475569; box-shadow: $shadow;
+    flex-shrink: 0; // Don't let it squash
+}
+.ahad_legend_item { display: flex; align-items: center; gap: 5px; }
+.ahad_swatch {
+    display: inline-block; width: 13px; height: 13px;
+    border-radius: 3px; border: 1px solid rgba(0,0,0,.11); flex-shrink: 0;
+}
+.ahad_legend_tip { color: #94a3b8; font-size: 11px; margin-left: auto; }
+
+// ── Loading / Empty ───────────────────────────────────────────────────────────
+.ahad_loading {
+    display: flex; align-items: center; gap: 8px;
+    padding: 40px; justify-content: center; color: #64748b; font-size: 14px;
+}
+.ahad_spinner {
+    width: 20px; height: 20px;
+    border: 3px solid #e2e8f0; border-top-color: $pri;
+    border-radius: 50%; animation: ahad_spin .7s linear infinite;
+}
+@keyframes ahad_spin { to { transform: rotate(360deg); } }
+.ahad_empty { text-align: center; padding: 50px; color: #64748b; font-size: 14px; }
+.ahad_empty_icon { display: block; font-size: 36px; margin-bottom: 8px; }
+
+// ── Table container ───────────────────────────────────────────────────────────
+.ahad_table_outer {
+    width: 100%;
+    margin-bottom: 12px;
+    flex-shrink: 0; // Prevents layout deformation down page tree
+}
+.ahad_table_scroll {
+    overflow-x: auto;            // Retain horizontal scroll strictly for calendar days
+    overflow-y: visible !important; // Prevent any micro vertical scroll containers
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: $radius;
+    box-shadow: $shadow;
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+.ahad_table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: max-content;
+    min-width: 100%;
+
+    th, td {
+        padding: 6px 7px;
+        border: 1px solid $border;
+        white-space: nowrap;
+    }
+    thead tr {
+        background: #f1f5f9;
+    }
+    th { font-weight: 600; color: #374151; text-align: center; }
+}
+
+// Sticky left columns
+.ahad_th_sticky, .ahad_td_sticky {
+    position: sticky;
+    z-index: 3;
+    background: #f1f5f9;
+}
+.ahad_td_sticky { background: #fff; }
+.ahad_tr:nth-child(even) .ahad_td_sticky { background: #f8fafc; }
+
+.ahad_th_badge, .ahad_td_badge { left: 160px; min-width: 80px;  text-align: center; }
+.ahad_th_dept,  .ahad_td_dept  { left: 240px; min-width: 110px; text-align: left; font-size: 11px; }
+.ahad_th_dayoff,.ahad_td_dayoff{ left: 350px; min-width: 76px;  text-align: center; font-size: 11px; }
+
+// shadow on right edge of sticky block
+.ahad_th_dayoff, .ahad_td_dayoff {
+    box-shadow: 2px 0 5px -1px rgba(0,0,0,.08);
+}
+
+// Pres count column — sticky, left side, right after Day Off sticky columns
+.ahad_th_pres, .ahad_td_pres {
+    left:       426px;   // 0 + 160 + 80 + 110 + 76
+    min-width:  52px;
+    text-align: center;
+    background: #e8f5e9;
+    font-weight: 600;
+    z-index: 4;
+}
+
+// Abs count column — sticky, left side, right after Pres sticky column
+.ahad_th_abs, .ahad_td_abs {
+    left:       478px;   // 426 + 52
+    min-width:  52px;
+    text-align: center;
+    background: #fff8e1;
+    font-weight: 600;
+    box-shadow: 3px 0 6px -1px rgba(0,0,0,.12);
+    border-right: 2px solid #ffe082;
+    z-index: 4;
+}
+
+.ahad_th_date  { min-width: 40px; font-size: 10.5px; white-space: pre-line;
+                 line-height: 1.25; color: #475569; text-align: center; }
+.ahad_th_summary { min-width: 52px; text-align: center; }
+
+// Row hover
+.ahad_table tbody tr {
+    &:nth-child(even) { background: #f8fafc; }
+    &:hover           { background: #eff6ff !important; }
+    &:hover .ahad_td_sticky { background: #eff6ff !important; }
+}
+
+// Employee name cell — fixed 160px, content clipped with ellipsis
+.ahad_th_emp,
+.ahad_td_emp {
+    left:      0;
+    width:     160px !important;
+    min-width: 160px !important;
+    max-width: 160px !important;
+}
+.ahad_td_emp {
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 500; color: #0f172a;
+    border-right: 2px solid $border;
+    overflow: hidden;
+}
+.ahad_avatar {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: $pri-lt; color: $pri; font-size: 10px; font-weight: 700;
+    flex-shrink: 0;
+}
+.ahad_emp_name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// Day cells
+.ahad_td_cell {
+    text-align: center; cursor: default; transition: filter .08s; position: relative; overflow: hidden;
+    .ahad_cell_lbl { font-weight: 700; font-size: 10.5px; letter-spacing: .2px; }
+}
+
+// Diagonal split background
+.ahad_split_off_p { background: linear-gradient(135deg, #b0bec5 50%, #d4edda 50%) !important; }
+.ahad_split_ph_p  { background: linear-gradient(135deg, #a5d6a7 50%, #d4edda 50%) !important; }
+
+// Triangular hit zones — cover the full cell, clipped to each triangle
+.ahad_zone_top,
+.ahad_zone_bot {
+    position: absolute; inset: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; line-height: 1;
+    &:hover { background: rgba(0, 0, 0, .10); }
+}
+// top-left triangle: label sits in upper-left quadrant
+.ahad_zone_top {
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+    padding-bottom: 40%;  // push text up into the triangle
+    padding-right:  40%;
+}
+// bottom-right triangle: label sits in lower-right quadrant
+.ahad_zone_bot {
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    padding-top:  40%;    // push text down into the triangle
+    padding-left: 40%;
+}
+
+.ahad_split_off_p .ahad_zone_top { color: #37474f; }
+.ahad_split_off_p .ahad_zone_bot { color: #1b5e20; }
+.ahad_split_ph_p  .ahad_zone_top { color: #1b5e20; }
+.ahad_split_ph_p  .ahad_zone_bot { color: #1b5e20; }
+
+// Clickable / draggable
+.ahad_clickable      { cursor: pointer; &:hover { filter: brightness(.9); } }
+.ahad_cursor_absent  { cursor: crosshair; &:hover { filter: brightness(.93); } }
+
+// Drag-highlight
+.ahad_drag_select {
+    outline: 2px solid $pri !important;
+    filter: brightness(.85) !important;
+}
+
+// Summary / breakdown columns
+.ahad_td_summary   { text-align: center; }
+.ahad_td_breakdown { min-width: 90px; }
+
+.ahad_chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; border-radius: 10px;
+    font-size: 10.5px; font-weight: 700; padding: 0 5px;
+}
+.ahad_chip_red   { background: #fee2e2; color: #b91c1c; }
+.ahad_chip_green { background: #d1fae5; color: #065f46; }
+
+.ahad_lc_chip {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: #f1f5f9; border: 1px solid $border; border-radius: 4px;
+    font-size: 10px; padding: 1px 5px; margin: 1px 2px;
+}
+.ahad_lc_chip_footer {
+    background: #ede9fe; border-color: #c4b5fd;
+    strong { color: $pri; }
+}
+.ahad_lc_none  { color: #94a3b8; font-size: 11px; }
+
+// Footer row
+.ahad_tfoot td {
+    background: #f1f5f9;
+    font-weight: 600;
+}
+.ahad_foot_label { font-size: 11px; color: #475569; }
+
+.ahad_no_data { text-align: center; padding: 28px; color: #94a3b8; font-size: 13px; }
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+.ahad_pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 9px 14px; box-shadow: $shadow; font-size: 12.5px; color: #475569;
+    flex-shrink: 0; // Keeps row element completely secure at base layout flow
+}
+.ahad_page_controls { display: flex; align-items: center; gap: 7px; }
+.ahad_page_btn {
+    padding: 4px 11px; border: 1px solid $border; border-radius: 6px;
+    background: #fff; color: #374151; font-size: 12.5px; cursor: pointer;
+    &:hover:not([disabled]) { background: #f1f5f9; }
+    &[disabled] { opacity: .38; cursor: not-allowed; }
+}
+.ahad_page_input {
+    width: 46px; padding: 4px 5px; text-align: center;
+    border: 1px solid $border; border-radius: 6px; font-size: 12.5px;
+    &:focus { outline: none; border-color: $pri; }
+}
+.ahad_page_of { color: #94a3b8; }
+
+// ── Leave creation popup ──────────────────────────────────────────────────────
+.ahad_overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.35);
+    z-index: 1050;
+    display: flex; align-items: center; justify-content: center;
+}
+.ahad_popup {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    width: 420px; max-width: 96vw;
+    display: flex; flex-direction: column; overflow: hidden;
+}
+.ahad_popup_header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid $border;
+}
+.ahad_popup_icon   { font-size: 22px; }
+.ahad_popup_title  { font-size: 15px; font-weight: 700; color: #0f172a; }
+.ahad_popup_sub    { font-size: 12px; color: #64748b; }
+.ahad_popup_close  {
+    margin-left: auto; background: none; border: none; cursor: pointer;
+    font-size: 16px; color: #94a3b8; line-height: 1;
+    &:hover { color: #374151; }
+}
+.ahad_popup_body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.ahad_popup_row  { display: flex; flex-direction: column; gap: 4px; }
+.ahad_popup_row2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    > div { display: flex; flex-direction: column; gap: 4px; }
+}
+.ahad_popup_footer {
+    display: flex; gap: 8px; justify-content: flex-end;
+    padding: 12px 18px; border-top: 1px solid $border;
+}
+// ── Swap popup extras ─────────────────────────────────────────────────────────
+.ahad_swap_popup {
+    width: 460px;
+}
+.ahad_popup_footer {
+    // already defined above; allow 3-button layout
+    flex-wrap: wrap;
+}
+.ahad_textarea {
+    width: 100%; box-sizing: border-box;
+    border: 1px solid $border; border-radius: 6px;
+    padding: 7px 10px; font-size: 13px; resize: vertical;
+    font-family: inherit; color: #1e293b;
+    &:focus { outline: none; border-color: $pri; box-shadow: 0 0 0 2px rgba(79,70,229,.15); }
+}
+.ahad_popup_full { width: 100%; box-sizing: border-box; }
+
+// ── Export PDF modal ─────────────────────────────────────────────────────────
+.ahad_export_popup {
+    width: 480px;
+}
+.ahad_export_section {
+    margin-bottom: 4px;
+}
+.ahad_export_options {
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: 220px; overflow-y: auto;
+    border: 1px solid $border; border-radius: 6px;
+    padding: 8px 10px; background: #fafafa;
+}
+.ahad_export_option {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 6px; border-radius: 5px; cursor: pointer;
+    font-size: 12.5px; color: #1e293b;
+    &:hover { background: $pri-lt; }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: $pri; flex-shrink: 0; cursor: pointer; }
+}
+.ahad_export_select_all {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 6px 8px; border-bottom: 1px solid $border; margin-bottom: 4px;
+    font-size: 11.5px; font-weight: 600; color: #475569; cursor: pointer;
+    input[type="checkbox"] { width: 14px; height: 14px; accent-color: $pri; flex-shrink: 0; }
+}

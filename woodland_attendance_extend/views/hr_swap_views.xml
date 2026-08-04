@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ── Sequence ─────────────────────────────────────────────────────── -->
+    <record id="seq_hr_swap" model="ir.sequence">
+        <field name="name">HR Swap Day</field>
+        <field name="code">hr.swap</field>
+        <field name="prefix">SWAP/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- ── Form View ─────────────────────────────────────────────────────── -->
+    <record id="view_hr_swap_form" model="ir.ui.view">
+        <field name="name">hr.swap.form</field>
+        <field name="model">hr.swap</field>
+        <field name="arch" type="xml">
+            <form string="Swap / ADJUST Request">
+
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <!-- ── Employee ── -->
+                    <group>
+                        <group string="Employee">
+                            <field name="employee_id"/>
+                            <field name="zk_badge_no" readonly="1"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="manager_id" readonly="1"/>
+                        </group>
+                        <group string="Swap Details">
+                            <field name="swap_work_type"/>
+                            <field name="swap_off_date"/>
+                            <field name="reason" placeholder="Reason for swap…"/>
+                        </group>
+                    </group>
+
+                    <!-- ── Weekend / Holiday ── -->
+                    <group string="Day Worked"
+                           invisible="swap_work_type not in ('weekend', 'holiday')">
+                        <group>
+                            <field name="swap_work_date"
+                                   required="swap_work_type in ('weekend', 'holiday')"/>
+                            <field name="public_holiday_id"
+                                   invisible="swap_work_type != 'holiday'"/>
+                        </group>
+                    </group>
+
+                    <!-- ── Extra Shift ── -->
+                    <group string="Extra Shift Details"
+                           invisible="swap_work_type != 'extra_shift'">
+                        <group>
+                            <field name="extra_work_date"
+                                   required="swap_work_type == 'extra_shift'"/>
+                            <field name="attendance_id"
+                                   required="swap_work_type == 'extra_shift'"
+                                   domain="[
+                                       ('employee_id', '=', employee_id),
+                                       ('is_used_for_swap', '=', False),
+                                   ]"
+                                   options="{'no_create': True}"/>
+                            <field name="attendance_worked_hours"
+                                   readonly="1"
+                                   invisible="not attendance_id"/>
+                        </group>
+                        <group>
+                            <div class="alert alert-info" role="alert"
+                                 invisible="not extra_work_date">
+                                <p>
+                                    Select the <strong>second (extra)</strong>
+                                    attendance record from
+                                    <field name="extra_work_date"
+                                           readonly="1" nolabel="1"/>.
+                                    The system will lock it so it cannot
+                                    be used again.
+                                </p>
+                            </div>
+                        </group>
+                    </group>
+
+                    <!-- ── Overtime ── -->
+                    <group string="Overtime Details"
+                           invisible="swap_work_type != 'overtime'">
+                        <group>
+                            <field name="attendance_id"
+                                   required="swap_work_type == 'overtime'"
+                                   domain="[
+                                       ('employee_id', '=', employee_id),
+                                       ('worked_hours', '>=', 8.0),
+                                       ('is_used_for_swap', '=', False),
+                                   ]"
+                                   options="{'no_create': True, 'no_open': False}"/>
+                            <field name="attendance_worked_hours"
+                                   readonly="1"
+                                   invisible="not attendance_id"/>
+                        </group>
+                        <group>
+                            <div class="alert alert-info" role="alert"
+                                 invisible="not attendance_id">
+                                <p>
+                                    Only attendance records with
+                                    <strong>8+ worked hours</strong> not
+                                    already used in another swap are shown.
+                                    Once saved, this record will be locked.
+                                </p>
+                            </div>
+                        </group>
+                    </group>
+
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Tree View ─────────────────────────────────────────────────────── -->
+    <record id="view_hr_swap_tree" model="ir.ui.view">
+        <field name="name">hr.swap.tree</field>
+        <field name="model">hr.swap</field>
+        <field name="arch" type="xml">
+            <list string="Swap / ADJUST Requests">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="zk_badge_no"/>
+                <field name="department_id"/>
+                <field name="swap_work_type"/>
+                <field name="swap_work_date"   optional="show" string="Work Date"/>
+                <field name="extra_work_date"  optional="show" string="Extra Work Date"/>
+                <field name="attendance_id"    optional="show" string="Attendance"/>
+                <field name="attendance_worked_hours" optional="show" string="Worked Hrs"/>
+                <field name="swap_off_date"/>
+
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Search View ───────────────────────────────────────────────────── -->
+    <record id="view_hr_swap_search" model="ir.ui.view">
+        <field name="name">hr.swap.search</field>
+        <field name="model">hr.swap</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="zk_badge_no"/>
+                <field name="employee_id"/>
+                <field name="name"/>
+                <separator/>
+                <filter name="type_weekend"  string="Weekly Day Off"
+                        domain="[('swap_work_type','=','weekend')]"/>
+                <filter name="type_holiday"  string="Public Holiday"
+                        domain="[('swap_work_type','=','holiday')]"/>
+                <filter name="type_extra"    string="Extra Shift"
+                        domain="[('swap_work_type','=','extra_shift')]"/>
+                <filter name="type_overtime" string="Overtime"
+                        domain="[('swap_work_type','=','overtime')]"/>
+                <separator/>
+
+                    <filter name="by_employee" string="Employee"
+                            context="{'group_by':'employee_id'}"/>
+                    <filter name="by_type"     string="Swap Type"
+                            context="{'group_by':'swap_work_type'}"/>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Action ────────────────────────────────────────────────────────── -->
+    <record id="action_hr_swap" model="ir.actions.act_window">
+        <field name="name">Swap Days</field>
+        <field name="res_model">hr.swap</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_hr_swap_search"/>
+    </record>
+
+    <!-- ── Menu ──────────────────────────────────────────────────────────── -->
+    <menuitem id="menu_hr_swap"
+              name="Swap Days"
+              parent="hr_attendance.menu_hr_attendance_root"
+              sequence="5"
+              action="action_hr_swap"/>
+
+</odoo>

@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_shift,hr_shift,model_hr_shift,base.group_user,1,1,1,1
+access_attendance_report_wizard,access_attendance_report_wizard,model_attendance_report_wizard,base.group_user,1,1,1,1
+access_hr_swap_user,hr.swap_user,model_hr_swap,hr.group_hr_user,1,1,1,0
+access_hr_swap_manager,hr.swap_manager,model_hr_swap,hr.group_hr_manager,1,1,1,1
+access_hr_badge_print_wizard,access_hr_badge_print_wizard,model_hr_badge_print_wizard,base.group_user,1,1,1,1
+
+
+

@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_id_card_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="woodland_attendance_extend.report_id_card_page"/>
+            </t>
+        </t>
+    </template>
+
+    <!-- Bare card markup only: no web.html_container, no page-break.
+         Expects `doc` in scope. Safe to embed multiple times on one page
+         (used by both the single-badge report and the A4 4-per-page sheet). -->
+    <template id="report_id_card_card">
+        <style>
+            *{ box-sizing:border-box; margin:0; padding:0; }
+            table.idc-outer{ border-collapse:collapse; width:96.3mm; height:72mm; table-layout:fixed; font-family:Arial,
+            Helvetica, sans-serif; }
+            table.idc-outer td{ padding:0; vertical-align:top; overflow:hidden; }
+            table.idc-outer td.card-cell{ width:48mm; }
+            table.idc-outer td.idc-foldcell{ width:0.3mm; }
+            .idc-foldcell .line{ border-left:0.3mm dashed #999; height:72mm; width:0; margin:0 auto; }
+
+            .idc-card{
+            width:48mm; height:72mm;
+            border:0.35mm solid #111;
+            padding:2.3mm 2.5mm;
+            position:relative;
+            overflow:hidden;
+            background:#ffffff;
+            }
+
+            /* header: logo only, centered, no wordmark/branding text.
+            NOTE: do NOT change this back to display:flex — flexbox does not
+            lay out correctly in this system's wkhtmltopdf and the cards will
+            stack vertically instead of sitting side by side. */
+            .idc-header{ overflow:hidden; margin:0 4mm 1mm 4mm; min-height:13mm; text-align:center; }
+            .idc-logo-circle{
+            width:100%; height:13mm; border-radius:1mm;
+            border:0.25mm solid #999;
+            display:inline-block; text-align:center; background:#fff; overflow:hidden;
+            }
+            .idc-logo-circle img{ width:100%; height:100%; object-fit:fill; }
+            .idc-logo-fallback{ font-size:6pt; font-weight:bold; line-height:13mm; }
+            .idc-logo-fallback .hs-h{ color:#c96a4b; }
+            .idc-logo-fallback .hs-s{ color:#2f6fb3; }
+
+            .idc-photo-wrap{ text-align:center; margin:0 4mm 3.5mm 4mm; }
+            .idc-photo{
+            width:18mm; height:21mm;
+            border:0.5mm solid #2f6fb3; border-radius:1mm;
+            overflow:hidden; background:#f7f7f7; display:inline-block;
+            position:relative;
+            }
+            .idc-photo .idc-photo-hint{
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            font-size:5.5pt; color:#999; text-align:center; width:90%;
+            }
+
+            .idc-fields{ font-size:6.5pt; line-height:1.45; color:#111; margin:0 4mm; font-style:italic; }
+            .idc-fields b{ font-weight:800; }
+            .idc-fields div{ white-space:nowrap; overflow:hidden; }
+
+            .idc-sign-row{ position:absolute; bottom:2.5mm; left:2.5mm; right:2.5mm; width:40mm;
+            border-collapse:separate; border-spacing:3mm 0; }
+            .idc-sign-cell{ width:50%; text-align:center; }
+            .idc-sign-space{ height:5mm; }
+            .idc-sign-line{ border-top:0.3mm solid #111; }
+            .idc-sign-label{ font-size:5pt; font-style:italic; margin-top:0.6mm; color:#111; white-space:nowrap; }
+
+            .idc-legal{ font-size:6pt; line-height:1.4; text-align:justify; color:#111; margin-bottom:1.5mm; }
+            .idc-addr{ font-size:7pt; line-height:1.55; color:#111; }
+            .idc-addr .label{ font-weight:700; }
+            .idc-personal{ font-size:7pt; line-height:1.6; margin-top:2mm; color:#111; }
+            .idc-personal .title{ font-weight:800; text-decoration:underline; margin-bottom:0.5mm; }
+        </style>
+
+        <table class="idc-outer">
+            <tr>
+
+                <!-- ============ FRONT (left cell) ============ -->
+                <td class="card-cell">
+                    <div class="idc-card">
+                        <!-- rotated side labels done via SVG <text rotate>, NOT CSS
+                             writing-mode — writing-mode does not rotate in this
+                             system's wkhtmltopdf and the text stays horizontal,
+                             overlapping the header, exactly like your last PDF.
+                             Kept short and confined to a narrow vertical strip at
+                             the very edges (outside the 4mm content margin used by
+                             idc-header/idc-fields/idc-photo-wrap) so it no longer
+                             overlaps the NAME field. -->
+                        <svg width="4mm" height="66mm" viewBox="0 0 40 660"
+                             style="position:absolute; left:0.9mm; top:4.5mm;">
+                            <text x="20" y="330" text-anchor="middle" transform="rotate(-90 20 330)"
+                                  font-size="20" font-style="italic" font-weight="bold" fill="#111"
+                                  font-family="Arial, Helvetica, sans-serif">Date of join:
+                                <t t-esc="doc.contract_date_start"/>
+                            </text>
+                        </svg>
+                        <svg width="4mm" height="66mm" viewBox="0 0 40 660"
+                             style="position:absolute; right:0.9mm; top:4.5mm;">
+                            <text x="20" y="330" text-anchor="middle" transform="rotate(90 20 330)"
+                                  font-size="20" font-style="italic" font-weight="bold" fill="#111"
+                                  font-family="Arial, Helvetica, sans-serif">Validity:
+                                <t t-esc="'Last Date of Job'"/>
+                            </text>
+                        </svg>
+
+                        <div class="idc-header">
+                            <div class="idc-logo-circle">
+                                <t t-if="doc.company_id.logo">
+                                    <img t-att-src="'data:image/png;base64,%s' % doc.company_id.logo.decode('utf-8')"/>
+                                </t>
+                                <t t-else="">
+                                    <span class="idc-logo-fallback">
+                                        <span class="hs-h">H</span>
+                                        <span class="hs-s">&amp;S</span>
+                                    </span>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="idc-photo-wrap">
+                            <div class="idc-photo">
+                                <span class="idc-photo-hint">Attach Photo</span>
+                            </div>
+                        </div>
+
+                        <div class="idc-fields">
+                            <div>
+                                <b>NAME:</b>
+                                <t t-esc="doc.name"/>
+                            </div>
+                            <div>
+                                <b>ID NO:</b>
+                                <t t-esc="doc.zk_badge_no or doc.barcode or ''"/>
+                            </div>
+                            <div>
+                                <b>DESIG:</b>
+                                <t t-esc="doc.job_title or (doc.job_id and doc.job_id.name) or ''"/>
+                            </div>
+                            <div>
+                                <b>SECTION:</b>
+                                <t t-esc="doc.department_id and doc.department_id.name or ''"/>
+                            </div>
+                            <div>
+                                <b>BLOOD GROUP:</b>
+                                <t t-esc="doc.blood_group"/>
+                            </div>
+                        </div>
+
+                        <table class="idc-sign-row">
+                            <tr>
+                                <td class="idc-sign-cell">
+                                    <div class="idc-sign-space"></div>
+                                    <div class="idc-sign-line"></div>
+                                    <div class="idc-sign-label">Sign of Card Holder</div>
+                                </td>
+                                <td class="idc-sign-cell">
+                                    <div class="idc-sign-space"></div>
+                                    <div class="idc-sign-line"></div>
+                                    <div class="idc-sign-label">Authorized Signature</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+
+                <td class="idc-foldcell">
+                    <div class="line"></div>
+                </td>
+
+                <!-- ============ BACK (right cell) ============ -->
+                <td class="card-cell">
+                    <div class="idc-card">
+                        <div class="idc-legal">
+                            This card is issued for limited purpose on behalf of
+                            <t t-esc="doc.company_id.name or ''"/>
+                            only and the authorities concerned are
+                            requested to extend all sorts of cooperation in professional work of the card
+                            holder. The company will not be liable for any immoral, illegal or subversive
+                            activity of the card holder.
+                        </div>
+
+                        <div class="idc-header">
+                            <div class="idc-logo-circle">
+                                <t t-if="doc.company_id.logo">
+                                    <img t-att-src="'data:image/png;base64,%s' % doc.company_id.logo.decode('utf-8')"/>
+                                </t>
+                                <t t-else="">
+                                    <span class="idc-logo-fallback">
+                                        <span class="hs-h">H</span>
+                                        <span class="hs-s">&amp;S</span>
+                                    </span>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="idc-addr">
+                            <t t-esc="'150,Moshan, Baruipara'"/>
+                            <br/>
+                            <t t-esc="'Mirpur, Kushtia-7000'"/>
+                            <br/>
+                            <span class="label">Phone:</span>
+                            <t t-esc="doc.company_id.phone or ''"/>
+                            <br/>
+                            <span class="label">Website:</span>
+                            <t t-esc="doc.company_id.website or ''"/>
+                            <br/>
+                            <span class="label">Email:</span>
+                            <t t-esc="doc.company_id.email or ''"/>
+                        </div>
+
+                        <div class="idc-personal">
+                            <div class="title">Personal Information:</div>
+                            <div>NID NO:
+                                <t t-esc="doc.identification_id or ''"/>
+                            </div>
+                            <div>CONTACT:
+                                <t t-esc="doc.mobile_phone or doc.work_phone or ''"/>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+
+            </tr>
+        </table>
+    </template>
+
+    <!-- Single-badge-per-page report: bare card + forced page-break, wrapped once in html_container. -->
+    <template id="report_id_card_page">
+        <div style="page-break-after: always; width:96.3mm;">
+            <t t-call="woodland_attendance_extend.report_id_card_card"/>
+        </div>
+    </template>
+
+    <record id="paperformat_id_card" model="report.paperformat">
+        <field name="name">ID Card (Front+Back, 48mm x 72mm, foldable)</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_height">72</field>
+        <field name="page_width">97</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_hr_id_card" model="ir.actions.report">
+        <field name="name">Employee ID Card</field>
+        <field name="model">hr.employee</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">woodland_attendance_extend.report_id_card_document</field>
+        <field name="report_file">woodland_attendance_extend.report_id_card_document</field>
+        <field name="print_report_name">'ID Card - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- ============ A4 sheet: 4 badges per page ============ -->
+    <template id="report_id_card_a4_document">
+        <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <div style="width:96.3mm; height:72mm; display:inline-block; margin:0 2mm 6mm 0; vertical-align:top;">
+                <t t-call="woodland_attendance_extend.report_id_card_card"/>
+            </div>
+        </t>
+        </t>
+    </template>
+
+    <record id="paperformat_id_card_a4" model="report.paperformat">
+        <field name="name">ID Card A4 Sheet (4 per page)</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_hr_id_card_a4" model="ir.actions.report">
+        <field name="name">Employee ID Cards (A4, 4 per page)</field>
+        <field name="model">hr.employee</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">woodland_attendance_extend.report_id_card_a4_document</field>
+        <field name="report_file">woodland_attendance_extend.report_id_card_a4_document</field>
+        <field name="print_report_name">'Employee ID Cards'</field>
+    </record>
+</odoo>

@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_zk_device,access_zk_device,model_zk_device,base.group_user,1,1,1,1
+access_zk_attendance_log,access_zk_attendance_log,model_zk_attendance_log,base.group_user,1,1,1,1
+access_zk_device_command,zk_device_command,model_zk_device_command,base.group_user,1,1,1,1
+access_zk_enrolled_user,zk.access_zk_enrolled_user,model_zk_enrolled_user,base.group_user,1,1,1,1
+access_zk_enrolled_fp,access_zk_enrolled_fp,model_zk_enrolled_fp,base.group_user,1,1,1,1
+access_zk_enrolled_face,access_zk_enrolled_face,model_zk_enrolled_face,base.group_user,1,1,1,1
+access_zk_export_wizard,access_zk_export_wizard,model_zk_attendance_export_wizard,base.group_user,1,1,1,1
+access_zk_sync_wizard,access_zk_sync_wizard,model_zk_user_sync_wizard,base.group_user,1,1,1,1
+access_zk_quick_cmd_wizard,access_zk_quick_cmd_wizard,model_zk_quick_command_wizard,base.group_user,1,1,1,1

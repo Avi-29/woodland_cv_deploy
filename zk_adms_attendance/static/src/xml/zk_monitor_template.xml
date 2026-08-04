@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+<t t-name="zk_adms_attendance.MonitorDashboard">
+    <div class="zk-monitor o_action">
+
+        <!-- Header -->
+        <div class="zk-monitor-header d-flex align-items-center justify-content-between p-3 border-bottom bg-white">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa fa-2x fa-desktop text-primary"/>
+                <div>
+                    <h4 class="mb-0">ZKTeco Real-time Monitor</h4>
+                    <small class="text-muted" t-if="state.lastRefresh">
+                        Last refreshed: <t t-esc="state.lastRefresh"/> · auto-refresh every 10s
+                    </small>
+                </div>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" t-on-click="manualRefresh">
+                <i class="fa fa-refresh"/> Refresh
+            </button>
+        </div>
+
+        <!-- Loading spinner -->
+        <div t-if="state.loading"
+             class="d-flex justify-content-center align-items-center"
+             style="height:300px">
+            <div class="spinner-border text-primary" role="status"/>
+            <span class="ms-3 text-muted">Loading dashboard…</span>
+        </div>
+
+        <!-- Main content -->
+        <div class="container-fluid p-3" t-if="!state.loading">
+
+            <!-- Stat Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card text-center border-0 shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <div class="fs-1 fw-bold text-primary" t-esc="state.stats.today"/>
+                            <div class="text-muted small">Punches Today</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card text-center border-0 shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <div class="fs-1 fw-bold text-secondary" t-esc="state.stats.total"/>
+                            <div class="text-muted small">Total Records</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card text-center border-0 shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <div class="fs-1 fw-bold text-success" t-esc="state.stats.online"/>
+                            <div class="text-muted small">Devices Online</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card text-center border-0 shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <div class="fs-1 fw-bold text-danger" t-esc="state.stats.offline"/>
+                            <div class="text-muted small">Devices Offline</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+
+                <!-- Devices Panel -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header fw-semibold">
+                            <i class="fa fa-hdd-o me-1"/> Registered Devices
+                        </div>
+                        <div class="card-body p-0">
+                            <div t-if="state.devices.length === 0" class="p-3 text-muted text-center">
+                                No devices registered yet.
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                <t t-foreach="state.devices" t-as="dev" t-key="dev.id">
+                                    <li class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <div class="fw-semibold" t-esc="dev.name"/>
+                                                <small class="text-muted"><t t-esc="dev.serial_number"/></small>
+                                                <t t-if="dev.location">
+                                                    <small class="text-muted"> · <t t-esc="dev.location"/></small>
+                                                </t>
+                                                <t t-if="dev.ip_address">
+                                                    <div><small class="text-muted font-monospace" t-esc="dev.ip_address"/></div>
+                                                </t>
+                                            </div>
+                                            <span t-attf-class="badge #{dev.state === 'online' ? 'bg-success zk-pulse' : dev.state === 'offline' ? 'bg-danger' : 'bg-warning text-dark'}">
+                                                <t t-esc="dev.state"/>
+                                            </span>
+                                        </div>
+                                        <div t-if="dev.last_heartbeat" class="mt-1">
+                                            <small class="text-muted">♥ <t t-esc="dev.last_heartbeat"/></small>
+                                        </div>
+                                        <div class="mt-1">
+                                            <small class="text-muted">
+                                                <i class="fa fa-clock-o"/> <t t-esc="dev.attendance_count"/> punches total
+                                            </small>
+                                        </div>
+                                    </li>
+                                </t>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Punches Feed -->
+                <div class="col-md-8">
+                    <div class="card shadow-sm">
+                        <div class="card-header fw-semibold">
+                            <i class="fa fa-clock-o me-1"/> Recent Punches
+                            <span class="badge bg-secondary float-end" t-esc="state.recentPunches.length"/>
+                        </div>
+                        <div class="card-body p-0">
+                            <div t-if="state.recentPunches.length === 0"
+                                 class="p-3 text-muted text-center">
+                                No attendance records yet.
+                            </div>
+                            <div class="table-responsive" t-if="state.recentPunches.length > 0">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Employee</th>
+                                            <th>Type</th>
+                                            <th>Verify</th>
+                                            <th>Device</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.recentPunches" t-as="punch" t-key="punch.id">
+                                            <tr>
+                                                <td class="text-nowrap small" t-esc="punch.punch_time_fmt"/>
+                                                <td>
+                                                    <span t-if="punch.employee_name" t-esc="punch.employee_name"/>
+                                                    <span t-else="" class="text-muted fst-italic">PIN: <t t-esc="punch.pin"/></span>
+                                                </td>
+                                                <td>
+                                                    <span t-attf-class="badge #{punch.punch_type === '0' ? 'bg-success' : punch.punch_type === '1' ? 'bg-primary' : 'bg-secondary'}">
+                                                        <t t-esc="punch.punch_type_label"/>
+                                                    </span>
+                                                </td>
+                                                <td class="small text-muted" t-esc="punch.verify_type_label"/>
+                                                <td class="small" t-esc="punch.device_name"/>
+                                                <td>
+                                                    <span t-attf-class="badge #{punch.state === 'processed' ? 'bg-success' : punch.state === 'new' ? 'bg-warning text-dark' : punch.state === 'error' ? 'bg-danger' : 'bg-secondary'}">
+                                                        <t t-esc="punch.state"/>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /row -->
+        </div><!-- /container -->
+    </div>
+</t>
+
+</templates>

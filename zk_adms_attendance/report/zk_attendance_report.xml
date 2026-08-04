@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Report action -->
+    <record id="action_report_zk_attendance" model="ir.actions.report">
+        <field name="name">Attendance Report</field>
+        <field name="model">zk.attendance.log</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">zk_adms_attendance.report_attendance_document</field>
+        <field name="report_file">zk_adms_attendance.report_attendance_document</field>
+        <field name="print_report_name">'ZK Attendance - %s' % (object.device_id.name or object.device_serial)</field>
+        <field name="binding_model_id" ref="model_zk_attendance_log"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- QWeb template -->
+    <template id="report_attendance_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>ZKTeco Attendance Record</h2>
+                        <table class="table table-sm table-bordered mt-4">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Punch Time (UTC)</th>
+                                    <th>Employee / PIN</th>
+                                    <th>Device</th>
+                                    <th>Punch Type</th>
+                                    <th>Verify</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><t t-esc="doc.punch_time"/></td>
+                                    <td>
+                                        <t t-if="doc.employee_name">
+                                            <t t-esc="doc.employee_name"/>
+                                            <small class="text-muted"> (PIN: <t t-esc="doc.pin"/>)</small>
+                                        </t>
+                                        <t t-else="">
+                                            PIN: <t t-esc="doc.pin"/>
+                                        </t>
+                                    </td>
+                                    <td><t t-esc="doc.device_id.name or doc.device_serial"/></td>
+                                    <td><t t-esc="doc.punch_type"/></td>
+                                    <td><t t-esc="doc.verify_type"/></td>
+                                    <td><t t-esc="doc.state"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <t t-if="doc.raw_line">
+                            <p class="text-muted small mt-3">Raw: <t t-esc="doc.raw_line"/></p>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_hr_employee_form_payroll" model="ir.ui.view">
+        <field name="name">hr.employee.form.payroll</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_type']" position="after">
+                <field name="salary_type"/>
+                <field name="daily_wage"/>
+            </xpath>
+            <xpath expr="//field[@name='job_id']" position="before">
+                <field name="day_off_day"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

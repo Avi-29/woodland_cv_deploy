@@ -1,0 +1,6 @@
+<odoo>
+    <record id="group_hide_unwanted" model="res.groups">
+        <field name="name">Hide Unwanted Features</field>
+        <field name="comment">Hide Unwanted Menu</field>
+    </record>
+</odoo>

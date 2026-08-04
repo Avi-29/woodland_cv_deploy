@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<record id="view_hr_badge_print_wizard_form" model="ir.ui.view">
+    <field name="name">hr.badge.print.wizard.form</field>
+    <field name="model">hr.badge.print.wizard</field>
+    <field name="arch" type="xml">
+        <form string="Print Employee ID Badges">
+            <group>
+                <field name="badge_no_from"/>
+                <field name="badge_no_to"/>
+            </group>
+            <footer>
+                <button name="action_print_badges" type="object"
+                        string="Print" class="btn-primary"/>
+                <button string="Cancel" class="btn-secondary" special="cancel"/>
+            </footer>
+        </form>
+    </field>
+</record>
+
+<record id="action_hr_badge_print_wizard" model="ir.actions.act_window">
+    <field name="name">Print ID Badges (Badge No. Range)</field>
+    <field name="res_model">hr.badge.print.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+</record>
+
+<!-- Adjust the parent menu id below to match an existing HR menu in your module -->
+<menuitem id="menu_hr_badge_print_wizard"
+          name="Print ID Badges"
+          action="action_hr_badge_print_wizard"
+          parent="hr.menu_human_resources_configuration"
+          sequence="100"/>
+
+</odoo>

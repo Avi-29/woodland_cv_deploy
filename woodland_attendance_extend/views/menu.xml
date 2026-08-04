@@ -1,0 +1,39 @@
+<!-- views/menu.xml -->
+<odoo>
+
+    <menuitem id="menu_shift"
+              name="Shifts"
+              parent="hr.menu_human_resources_configuration"
+              action="action_shift"/>
+    <menuitem id="menu_day_off_attendance"
+              name="Day-Off Records"
+              parent="hr_attendance.menu_hr_attendance_root"
+              action="action_day_off_attendance"
+              sequence="12"/>
+    <menuitem id="menu_late_attendance"
+              name="Late Arrivals"
+              parent="hr_attendance.menu_hr_attendance_root"
+              action="action_late_attendance"
+              sequence="11"/>
+    <record id="hr_attendance.menu_action_open_form" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('woodland_attendance_extend.group_hide_unwanted')])]"/>
+</record>
+    <record id="hr_attendance.menu_hr_attendance_view_attendances_management" model="ir.ui.menu">
+    <field name="group_ids" eval="[(6, 0, [ref('woodland_attendance_extend.group_hide_unwanted')])]"/>
+</record>
+    <menuitem id="menu_attendance_approval_root"
+              name="OverTime Approval"
+              parent="hr_attendance.menu_hr_attendance_root"
+              sequence="14"/>
+    <menuitem id="menu_regular_attendance"
+          name="Regular Employee Approval"
+          parent="menu_attendance_approval_root"
+          action="action_regular_attendance_approval"/>
+
+<menuitem id="menu_daily_attendance"
+          name="Daily Employee Approval"
+          parent="menu_attendance_approval_root"
+          action="action_daily_attendance_approval"/>
+
+</odoo>
+

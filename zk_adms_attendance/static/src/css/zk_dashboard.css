@@ -1,0 +1,39 @@
+.zk-monitor {
+    background: var(--o-view-background-color, #f8f9fa);
+    min-height: 100%;
+}
+
+.zk-monitor-header {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.zk-monitor .card {
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,.07);
+}
+
+.zk-monitor .card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(0,0,0,.07);
+    font-size: .9rem;
+}
+
+.zk-monitor .list-group-item {
+    padding: .65rem 1rem;
+}
+
+.zk-monitor table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Pulse animation for online devices */
+@keyframes zk-pulse {
+    0%   { opacity: 1; }
+    50%  { opacity: .5; }
+    100% { opacity: 1; }
+}
+
+.zk-monitor .badge.bg-success {
+    animation: zk-pulse 2.5s infinite;
+}

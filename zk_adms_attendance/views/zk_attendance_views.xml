@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_zk_attendance_list" model="ir.ui.view">
+        <field name="name">zk.attendance.log.list</field>
+        <field name="model">zk.attendance.log</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Logs"
+                  decoration-danger="state == 'error'"
+                  decoration-muted="state == 'ignored'"
+                  decoration-success="state == 'processed'">
+                <field name="punch_time"/>
+                <field name="pin"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="processed_punch_type" widget="badge"
+                       decoration-success="processed_punch_type =='check_in'"
+                       decoration-warning="processed_punch_type =='check_out'"
+                       decoration-muted="processed_punch_type in ['break_in','break_out']"/>
+                <field name="employee_name" optional="hide"/>
+                <field name="device_id"/>
+                <field name="punch_type"/>
+                <field name="verify_type"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'processed'"
+                       decoration-warning="state == 'new'"
+                       decoration-muted="state == 'ignored'"
+                       decoration-danger="state == 'error'"/>
+
+            </list>
+        </field>
+    </record>
+
+    <record id="view_zk_attendance_form" model="ir.ui.view">
+        <field name="name">zk.attendance.log.form</field>
+        <field name="model">zk.attendance.log</field>
+        <field name="arch" type="xml">
+            <form string="Attendance Log">
+                <header>
+                    <button name="action_reprocess" type="object"
+                            string="Reprocess" class="btn-primary"
+                            invisible="state not in ['error','ignored']"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Punch">
+                            <field name="punch_time"/>
+                            <field name="punch_type"/>
+                            <field name="verify_type"/>
+                            <field name="work_code"/>
+                        </group>
+                        <group string="Employee">
+                            <field name="pin"/>
+                            <field name="employee_id"/>
+                            <field name="employee_name" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Device">
+                        <field name="device_id"/>
+                        <field name="device_serial"/>
+                    </group>
+                    <group string="Debug" groups="base.group_no_one">
+                        <field name="raw_line"/>
+                        <field name="error_msg"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_zk_attendance" model="ir.actions.act_window">
+        <field name="name">Attendance Logs</field>
+        <field name="res_model">zk.attendance.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_zk_monitor" model="ir.actions.client">
+        <field name="name">Real-time Monitor</field>
+        <field name="tag">zk_adms.monitor</field>
+    </record>
+</odoo>

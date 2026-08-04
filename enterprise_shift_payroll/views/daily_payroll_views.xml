@@ -1,0 +1,237 @@
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════
+         GENERATE PAYROLL WIZARD
+    ════════════════════════════════════════════════════ -->
+    <record id="view_daily_payroll_wizard" model="ir.ui.view">
+        <field name="name">daily.payroll.wizard.form</field>
+        <field name="model">daily.payroll.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Daily Payroll">
+                <group>
+                    <field name="work_date"/>
+                </group>
+                <footer>
+                    <button string="Generate" type="object" name="action_generate" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_daily_payroll_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Daily Payroll</field>
+        <field name="res_model">daily.payroll.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         DAILY EXCEL REPORT WIZARD
+    ════════════════════════════════════════════════════ -->
+    <record id="view_daily_payroll_excel_wizard" model="ir.ui.view">
+        <field name="name">daily.payroll.excel.wizard.form</field>
+        <field name="model">daily.payroll.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Daily Payroll Excel Report">
+                <group string="Report Filters">
+                    <field name="report_date"/>
+                    <field name="department_id" placeholder="All Departments"/>
+                </group>
+                <footer>
+                    <button string="Generate &amp; Download"
+                            type="object"
+                            name="action_export_excel"
+                            class="btn-primary"
+                            icon="fa-file-excel-o"/>
+                    <button string="Close" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_daily_payroll_excel_wizard" model="ir.actions.act_window">
+        <field name="name">Export Daily Payroll Excel</field>
+        <field name="res_model">daily.payroll.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         WEEKLY EXCEL REPORT WIZARD
+    ════════════════════════════════════════════════════ -->
+    <record id="view_weekly_payroll_excel_wizard" model="ir.ui.view">
+        <field name="name">weekly.payroll.excel.wizard.form</field>
+        <field name="model">weekly.payroll.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Weekly Payroll Excel Report">
+                <group string="Report Filters">
+                    <field name="week_date"
+                           help="Pick any date in the week — the report will cover Mon–Sun of that week."/>
+                    <field name="department_id" placeholder="All Departments"/>
+                    <field name="include_bonus" />
+                    <field name="bonus_month" required="include_bonus=='True'" options="{'min_precision': 'months'}" invisible="not include_bonus"/>
+
+                </group>
+                <footer>
+                    <button string="Generate &amp; Download"
+                            type="object"
+                            name="action_export_weekly_excel"
+                            class="btn-primary"
+                            icon="fa-file-excel-o"/>
+                    <button string="Close" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_weekly_payroll_excel_wizard" model="ir.actions.act_window">
+        <field name="name">Export Weekly Payroll Excel</field>
+        <field name="res_model">weekly.payroll.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         TREE / LIST VIEW
+    ════════════════════════════════════════════════════ -->
+    <record id="view_daily_payroll_tree" model="ir.ui.view">
+        <field name="name">daily.payroll.tree</field>
+        <field name="model">daily.payroll</field>
+        <field name="arch" type="xml">
+            <list>
+                <header>
+                    <button name="%(action_daily_payroll_wizard)d"
+                            string="Generate Payroll"
+                            type="action"
+                            class="btn-primary"
+                            display="always"/>
+                    <button name="%(action_daily_payroll_excel_wizard)d"
+                            string="Daily Excel Report"
+                            type="action"
+                            class="btn-secondary"
+                            display="always"/>
+
+                    <button name="%(action_weekly_payroll_excel_wizard)d"
+                            string="Weekly Excel Report"
+                            type="action"
+                            class="btn-secondary"
+                            icon="fa-calendar"
+                            display="always"/>
+                </header>
+                <field name="work_date"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="present"/>
+                <field name="hours_worked" string="Hours"/>
+                <field name="wage" string="Daily Wage"/>
+                <field name="hourly_rate" string="Rate/h" digits="[16,4]"/>
+                <field name="ot_hours" string="OT Hrs"/>
+                <field name="ot_amount" string="OT Amt"/>
+                <field name="amount" string="Base Pay"/>
+                <field name="total_amount" string="Total" bold="True"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         FORM VIEW
+    ════════════════════════════════════════════════════ -->
+    <record id="view_daily_payroll_form" model="ir.ui.view">
+        <field name="name">daily.payroll.form</field>
+        <field name="model">daily.payroll</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="employee_id" placeholder="Employee"/>
+                        </h1>
+                    </div>
+
+                    <group string="Basic Information">
+                        <group>
+                            <field name="work_date"/>
+                            <field name="department_id"/>
+                            <field name="present"/>
+                        </group>
+                        <group>
+                            <field name="wage" string="Daily Wage"/>
+                            <field name="hourly_rate" string="Hourly Rate (Wage ÷ 8)" digits="[16,4]"/>
+                            <field name="amount" string="Base Pay"/>
+                        </group>
+                    </group>
+
+                    <group string="Overtime Details">
+                        <group>
+                            <field name="hours_worked" string="Total Hours Worked"/>
+                            <field name="ot_hours"
+                                   string="OT Hours (after 8h work + 1h buffer)"/>
+                        </group>
+                        <group>
+                            <field name="ot_amount"
+                                   string="OT Amount"/>
+                        </group>
+                    </group>
+
+                    <group string="Payment Summary">
+                        <group/>
+                        <group>
+                            <field name="total_amount"
+                                   string="Total Amount (Base + Approved OT)"
+                                   readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         SEARCH VIEW
+    ════════════════════════════════════════════════════ -->
+    <record id="view_daily_payroll_search" model="ir.ui.view">
+        <field name="name">daily.payroll.search</field>
+        <field name="model">daily.payroll</field>
+        <field name="arch" type="xml">
+            <search>
+                <searchpanel>
+                    <field name="department_id"/>
+
+                </searchpanel>
+                <field name="employee_id"/>
+                <field name="work_date"/>
+                <filter name="filter_present"    string="Present Only"
+                        domain="[('present','=',True)]"/>
+                <filter name="filter_absent"     string="Absent Only"
+                        domain="[('present','=',False)]"/>
+                <separator/>
+                <filter name="group_day_date"   string="Day Wise"
+                        domain="[]"
+                        context="{'group_by': 'work_date:day'}"/>
+                <filter name="group_department" string="Department Wise"
+                        domain="[]"
+                        context="{'group_by': 'department_id'}"/>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════
+         WINDOW ACTION
+    ════════════════════════════════════════════════════ -->
+    <record id="action_daily_payroll" model="ir.actions.act_window">
+        <field name="name">Daily Payroll</field>
+        <field name="res_model">daily.payroll</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{
+            'search_default_group_day_date': 1,
+        }</field>
+    </record>
+
+</odoo>

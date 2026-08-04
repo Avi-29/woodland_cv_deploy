@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <menuitem id="menu_payroll_root"       name="Payroll"           sequence="95"/>
+    <menuitem id="menu_payroll_payslips"   name="All Payslips"
+              parent="menu_payroll_root"   action="action_payroll_payslip"          sequence="20"/>
+    <menuitem id="menu_daily_payroll" sequence="30"
+              name="Daily Payroll"
+              parent="menu_payroll_root"
+              action="action_daily_payroll"/>
+
+    <menuitem id="menu_payroll_config"     name="Configuration"
+              parent="menu_payroll_root"                                             sequence="90"/>
+    <menuitem id="menu_payroll_structure"  name="Salary Structure"
+              parent="menu_payroll_config" action="action_payroll_salary_structure" sequence="10"/>
+    <menuitem
+        id="menu_overtime_export_wizard"
+        name="Export Overtime Pay"
+        parent="menu_payroll_root"
+        action="action_open_overtime_export_wizard"
+        sequence="30"/>
+</odoo>

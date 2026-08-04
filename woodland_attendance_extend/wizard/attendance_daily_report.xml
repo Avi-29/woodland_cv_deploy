@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Wizard: attendance.report.wizard  –  views
+    ══════════════════════════════════════════════════════════════════════════ -->
+
+    <record id="view_attendance_report_wizard_form" model="ir.ui.view">
+        <field name="name">attendance.report.wizard.form</field>
+        <field name="model">attendance.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Download Daily Attendance Report">
+                <group>
+                    <group string="Filter Options">
+                        <field name="report_date" required="1"/>
+                        <field name="shift_ids"
+                               widget="many2many_tags"
+                               placeholder="Leave empty for all shifts"/>
+                        <field name="worker_type"
+                               placeholder="Leave empty for all workers"/>
+                        <field name="department_id"
+                               widget="many2many_tags"
+                               placeholder="Leave empty for all departments"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_generate_report"
+                            string="Download Excel"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-download"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Standalone menu action (optional – accessible from Settings / Attendance) -->
+    <record id="action_attendance_report_wizard" model="ir.actions.act_window">
+        <field name="name">Daily Attendance Report</field>
+        <field name="res_model">attendance.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_attendance_report_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Extend hr.attendance list view – add the "Download Report" button
+         in the action bar (header).
+    ══════════════════════════════════════════════════════════════════════════ -->
+
+    <record id="view_hr_attendance_tree_inherit_report_btn"
+            model="ir.ui.view">
+        <field name="name">hr.attendance.tree.report.button</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+        <field name="arch" type="xml">
+            <!--
+                Add the button inside <header> (creates the button bar at the
+                top of the list).  If the base view already has a <header>
+                block, Odoo merges; otherwise it creates one.
+            -->
+            <xpath expr="//header" position="inside">
+
+                    <button name="%(action_attendance_report_wizard)d"
+                            string="Download Daily Report"
+                            type="action"
+                            class="btn-primary"
+                    display="always"/>
+
+            </xpath>
+        </field>
+    </record>
+
+
+</odoo>

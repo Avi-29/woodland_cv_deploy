@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================ -->
+    <!-- Salary Structure Config                                           -->
+    <!-- ================================================================ -->
+    <record id="view_payroll_salary_structure_form" model="ir.ui.view">
+        <field name="name">payroll.salary.structure.form</field>
+        <field name="model">payroll.salary.structure</field>
+        <field name="arch" type="xml">
+            <form string="Salary Structure">
+                <sheet>
+                    <div class="oe_title"><h1>Salary Component Configuration</h1></div>
+                    <group>
+                        <group string="Company">
+                            <field name="company_id"/>
+                        </group>
+                        <group string="Totals">
+                            <field name="total_pct"
+                                   decoration-danger="total_pct != 100"
+                                   decoration-success="total_pct == 100"
+                                   widget="float" readonly="1"
+                                   string="Total (must = 100%)"/>
+                        </group>
+                    </group>
+                    <group string="Component Percentages">
+                        <group>
+                            <field name="basic_pct"  string="Basic (%)"/>
+                            <field name="hra_pct"    string="HRA (%)"/>
+                        </group>
+                        <group>
+                            <field name="travel_pct"  string="Travel (%)"/>
+                            <field name="medical_pct" string="Medical (%)"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        All four percentages must add up to exactly <strong>100%</strong>.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_payroll_salary_structure" model="ir.actions.act_window">
+        <field name="name">Salary Structure</field>
+        <field name="res_model">payroll.salary.structure</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+
+    <!-- ================================================================ -->
+    <!-- Generate Monthly Payslips Wizard                                  -->
+    <!-- ================================================================ -->
+    <record id="view_generate_month_payslips_wizard_form" model="ir.ui.view">
+        <field name="name">payroll.generate.month.payslips.wizard.form</field>
+        <field name="model">payroll.generate.month.payslips.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Monthly Payslips">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Generate Payslips for All Regular Employees</h2>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        This will create and compute one payslip per active employee
+                        with <strong>worker_type = regular</strong> for the selected month.
+                        Employees who already have a payslip for that month are skipped
+                        (or recomputed if the option below is enabled).
+                    </div>
+                    <group>
+                        <field name="payroll_month"
+                               string="Month"
+                               options="{'min_precision': 'months'}"
+                               required="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Generate &amp; Compute"
+                            name="action_generate"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_generate_month_payslips_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Monthly Payslips</field>
+        <field name="res_model">payroll.generate.month.payslips.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+
+    <!-- ================================================================ -->
+    <!-- Import Payslips Wizard                                            -->
+    <!-- ================================================================ -->
+    <record id="view_import_payslips_wizard_form" model="ir.ui.view">
+        <field name="name">payroll.import.payslips.wizard.form</field>
+        <field name="model">payroll.import.payslips.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Payroll Worksheet">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Export Payroll Worksheet</h2>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        Select a payroll month and generate a professional Excel report
+                        with all payslips, salary components, attendance, and deductions.
+                    </div>
+                    <group>
+                        <field name="export_month"
+                               string="Payroll Month to Export"
+                               options="{'min_precision': 'months'}"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Generate Report"
+                            name="action_export_payroll"
+                            type="object"
+                            class="btn-primary"
+                            invisible="excel_fname"/>
+                    <button string="Re-generate"
+                            name="action_export_payroll"
+                            type="object"
+                            class="btn-primary"
+                            invisible="not excel_fname"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_import_payslips_wizard" model="ir.actions.act_window">
+        <field name="name">Import Payslips from Excel</field>
+        <field name="res_model">payroll.import.payslips.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+
+    <!-- ================================================================ -->
+    <!-- Payslip — Form                                                    -->
+    <!-- ================================================================ -->
+    <record id="view_payroll_payslip_form" model="ir.ui.view">
+        <field name="name">payroll.payslip.form</field>
+        <field name="model">payroll.payslip</field>
+        <field name="arch" type="xml">
+            <form string="Payslip">
+                <header>
+                    <button name="action_compute" type="object" string="Compute"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_validate" type="object" string="Validate"
+                            class="btn-primary" invisible="state != 'computed'"/>
+                    <button name="action_waiting_payment" type="object" string="Mark Waiting Payment"
+                            invisible="state != 'validated'"/>
+                    <button name="action_mark_paid" type="object" string="Mark Paid"
+                            invisible="state != 'waiting_payment'"/>
+                    <button name="action_print_payslip" type="object" string="Print Payslip"
+                            icon="fa-print" invisible="state == 'draft'"/>
+                    <button name="action_reset_draft" type="object" string="Reset to Draft"
+                            class="btn-secondary" invisible="state in ['draft','paid']"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,computed,validated,waiting_payment,paid"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Employee">
+                            <field name="employee_id"/>
+                            <field name="company_id"/>
+                        </group>
+                        <group string="Payroll Month">
+                            <field name="payroll_month"
+                                   options="{'min_precision': 'months'}"
+                                   string="Month"/>
+                            <field name="date_from" readonly="1" string="From"/>
+                            <field name="date_to"   readonly="1" string="To"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Earnings">
+                            <group>
+                                <group string="Wage &amp; Working Days">
+                                    <field name="monthly_wage"            readonly="1"/>
+                                    <field name="calendar_days_in_period" readonly="1"/>
+                                    <field name="day_off_count"           readonly="1" string="Weekly Off Days"/>
+                                    <field name="working_days_in_period"  readonly="1"/>
+                                    <field name="per_day_rate"            readonly="1"/>
+                                </group>
+                                <group string="Components">
+                                    <field name="basic_pct"      readonly="1"/>
+                                    <field name="basic_amount"   readonly="1"/>
+                                    <field name="hra_pct"        readonly="1"/>
+                                    <field name="hra_amount"     readonly="1"/>
+                                    <field name="travel_pct"     readonly="1"/>
+                                    <field name="travel_amount"  readonly="1"/>
+                                    <field name="medical_pct"    readonly="1"/>
+                                    <field name="medical_amount" readonly="1"/>
+                                    <field name="gross_salary"   readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Attendance &amp; Leave">
+                            <group>
+                                <group string="Attendance">
+                                    <field name="working_days_in_period" readonly="1"/>
+                                    <field name="public_holiday_days"    readonly="1"/>
+                                    <field name="present_days"           readonly="1"/>
+                                    <field name="absent_days"            readonly="1"/>
+                                    <field name="late_days"              readonly="1"/>
+                                    <field name="adjust_days"            readonly="1"/>
+                                </group>
+                                <group string="Leaves">
+                                    <field name="approved_leave_days" readonly="1"/>
+                                    <field name="unpaid_leave_days"   readonly="1"/>
+                                    <field name="lwp_days"             readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Deductions &amp; Net">
+                            <group>
+                                <group string="Deductions">
+                                    <field name="absent_deduct_per_day"   readonly="1"/>
+                                    <field name="absent_deduction"        readonly="1"/>
+                                    <field name="late_deduction"          readonly="1"/>
+                                    <field name="unpaid_leave_deduction"  readonly="1"/>
+                                    <field name="total_deductions"        readonly="1"/>
+                                </group>
+                                <group string="Overtime (Validated)">
+                                    <field name="overtime_hours" readonly="1"/>
+                                    <field name="hourly_rate"    readonly="1"/>
+                                    <field name="overtime_pay"   readonly="1"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Net Pay">
+                                    <field name="gross_salary"     readonly="1"/>
+                                    <field name="overtime_pay"     readonly="1"/>
+                                    <field name="total_deductions" readonly="1"/>
+                                    <field name="attendance_bonus" readonly="1"/>
+                                    <field name="net_salary"       readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Any internal notes…"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- ================================================================ -->
+    <!-- Payslip — List  (with Generate + Import header buttons)          -->
+    <!-- ================================================================ -->
+    <record id="view_payroll_payslip_list" model="ir.ui.view">
+        <field name="name">payroll.payslip.list</field>
+        <field name="model">payroll.payslip</field>
+        <field name="arch" type="xml">
+            <list decoration-success="state == 'paid'"
+                  decoration-warning="state == 'validated'"
+                  decoration-info="state == 'computed'">
+                <header>
+                    <button string="Generate Month Payslips"
+                            type="action"
+                            name="%(action_generate_month_payslips_wizard)d"
+                            class="btn-primary"
+                            display="always"/>
+                    <button string="Export Excel"
+                            type="action"
+                            name="%(action_import_payslips_wizard)d"
+                            class="btn-secondary"
+                    display="always"/>
+                    <button string="Export Attendance Data"
+                            type="action"
+                            name="%(action_open_attendance_export_wizard)d"
+                            class="btn-secondary"
+                    display="always"/>
+                </header>
+
+                <field name="employee_id"/>
+                <field name="payroll_month" string="Month"/>
+                <field name="month"         string="Month Name" optional="hide"/>
+                <field name="working_days_in_period" optional="hide"/>
+                <field name="present_days"           optional="hide"/>
+                <field name="absent_days"            optional="hide"/>
+                <field name="gross_salary"      sum="Total Gross"/>
+                <field name="total_deductions"  sum="Total Deductions"/>
+                <field name="net_salary"        sum="Total Net"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'paid'"
+                       decoration-warning="state == 'validated'"
+                       decoration-info="state == 'computed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_payroll_payslip" model="ir.actions.act_window">
+        <field name="name">All Payslips</field>
+        <field name="res_model">payroll.payslip</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

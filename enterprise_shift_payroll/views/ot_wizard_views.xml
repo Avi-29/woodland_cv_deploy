@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Overtime Export Wizard – Form View
+    ════════════════════════════════════════════════════════════════ -->
+    <record id="view_overtime_export_wizard_form" model="ir.ui.view">
+        <field name="name">payroll.overtime.export.wizard.form</field>
+        <field name="model">payroll.overtime.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Overtime Pay">
+                <group>
+                    <field name="export_month" options="{'min_precision':'months'}"/>
+                </group>
+                <footer>
+                    <button name="action_export_overtime"
+                            string="Export Overtime"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Action – opens the wizard in a dialog
+    ════════════════════════════════════════════════════════════════ -->
+    <record id="action_open_overtime_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export Overtime Pay</field>
+        <field name="res_model">payroll.overtime.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_overtime_export_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

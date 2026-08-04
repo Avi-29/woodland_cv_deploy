@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Shift List
+    ============================================================ -->
+    <record id="view_shift_tree" model="ir.ui.view">
+        <field name="name">hr.shift.tree</field>
+        <field name="model">hr.shift</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="start_time" widget="float_time"/>
+                <field name="end_time" widget="float_time"/>
+                <field name="is_morning_shift"/>
+                <field name="is_night"/>
+                <field name="is_12_hour"/>
+                <field name="is_general"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Shift Form
+    ============================================================ -->
+    <record id="view_shift_form" model="ir.ui.view">
+        <field name="name">hr.shift.form</field>
+        <field name="model">hr.shift</field>
+        <field name="arch" type="xml">
+            <form string="Shift">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="start_time" widget="float_time"
+                               help="24-hour format. e.g. 06:00 → 6.0, 22:30 → 22.5"/>
+                        <field name="end_time" widget="float_time"/>
+                        <field name="is_morning_shift"/>
+                        <field name="is_night"
+                               help="Enable if this shift crosses midnight (end_time &lt; start_time). e.g. Night 22:00–06:00."/>
+                        <field name="is_12_hour"
+                               help="Enable for 12-hour Day/Night shifts (06:00–18:00 or 18:00–06:00). Used to resolve boundary overlaps."/>
+                        <field name="is_general"/>
+                        <field name="break_start" widget="float_time"
+                               invisible="not is_general"/>
+                        <field name="break_end" widget="float_time"
+                               invisible="not is_general"/>
+                    </group>
+                    <group string="Check-in Window Rules">
+                        <label for="start_time" string="Accepted window"/>
+                        <div class="o_field_widget">
+                            Shift Start − 1 h  to  Shift Start + 2 h
+                        </div>
+                        <label for="start_time" string="Late threshold"/>
+                        <div class="o_field_widget">
+                            Shift Start + 15 min
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Action
+    ============================================================ -->
+    <record id="action_shift" model="ir.actions.act_window">
+        <field name="name">Shifts</field>
+        <field name="res_model">hr.shift</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

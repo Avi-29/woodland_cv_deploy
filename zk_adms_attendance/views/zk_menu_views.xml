@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_zk_root"
+              name="ZKTeco ADMS"
+              sequence="85"
+              web_icon="zk_adms_attendance,static/src/img/icon.png"
+              />
+
+<!--    <menuitem id="menu_zk_monitor"-->
+<!--              name="Real-time Monitor"-->
+<!--              parent="menu_zk_root"-->
+<!--              action="action_zk_monitor"-->
+<!--              sequence="10"-->
+<!--              />-->
+
+    <menuitem id="menu_zk_attendance"
+              name="Attendance Logs"
+              parent="menu_zk_root"
+              action="action_zk_attendance"
+              sequence="20"
+              />
+
+    <menuitem id="menu_zk_enrolled"
+              name="Enrolled Users"
+              parent="menu_zk_root"
+              action="action_zk_enrolled_user"
+              sequence="30"
+              />
+
+    <menuitem id="menu_zk_commands"
+              name="Command Queue"
+              parent="menu_zk_root"
+              action="action_zk_command_queue"
+              sequence="40"
+              />
+
+    <menuitem id="menu_zk_export"
+              name="Export Attendance"
+              parent="menu_zk_root"
+              action="zk_adms_attendance.action_zk_export_wizard"
+              sequence="50"
+              />
+
+    <menuitem id="menu_zk_config"
+              name="Configuration"
+              parent="menu_zk_root"
+              sequence="90"
+              />
+
+    <menuitem id="menu_zk_devices"
+              name="Devices"
+              parent="menu_zk_config"
+              action="action_zk_device"
+              sequence="10"
+              />
+
+    <menuitem id="menu_zk_sync"
+              name="Sync Users to Devices"
+              parent="menu_zk_config"
+              action="action_zk_user_sync_wizard"
+              sequence="20"
+              />
+
+    <menuitem id="menu_zk_send_cmd"
+              name="Send Device Command"
+              parent="menu_zk_config"
+              action="action_zk_quick_command_wizard"
+              sequence="30"
+              />
+</odoo>

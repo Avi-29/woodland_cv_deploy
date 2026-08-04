@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Add ZKTeco smart button + tab to the standard Employee form -->
+    <record id="view_hr_employee_form_zk" model="ir.ui.view">
+        <field name="name">hr.employee.form.zk</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Smart button: punches count -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_zk_attendance"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-clock-o"
+                        invisible="not zk_badge_no">
+                    <field name="zk_attendance_count" widget="statinfo" string="ZK Punches"/>
+                </button>
+
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <field name="active_employee" invisible="1"/>
+                <button name="action_archive_and_remove_from_devices"
+                        type="object" invisible="active=='False'"
+                        string="Delete Employee"
+                        class="btn-danger"
+                        confirm="This will archive the employee and remove from all devices. Continue?"/>
+            </xpath>
+            <!-- ZKTeco tab inside the notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="ZKTeco Device" name="zkteco">
+                    <group>
+                        <group string="Device Identity">
+                            <field name="zk_badge_no"
+                                   placeholder="e.g. 1, 2, 42 — must match User ID on device"/>
+                            <field name="zk_card_no"
+                                   placeholder="RFID card number (optional)"/>
+                        </group>
+                        <group string="Enrollment">
+                            <field name="zk_enrolled_user_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <div class="mt-2" invisible="not zk_badge_no">
+                        <button name="action_sync_to_devices"
+                                type="object"
+                                string="Sync Biometrics to Other Devices"
+                                class="btn-primary"
+                                icon="fa-share-alt"/>
+                        <button name="action_remove_from_devices"
+                                type="object"
+                                string="Remove From Devices"
+                                class="btn-danger ms-2"/>
+                    </div>
+
+
+
+                    <div class="alert alert-info mt-2" invisible="zk_badge_no" role="alert">
+                        <i class="fa fa-info-circle me-1"/>
+                        Set a <strong>ZKTeco Badge No</strong> to link attendance punches from
+                        the device to this employee.
+                    </div>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+    <record id="view_employee_kanban_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.kanban.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+        <field name="arch" type="xml">
+            <xpath expr="//main/div" position="after">
+                <div>
+                    ID NO.-
+                    <field name="zk_badge_no"/>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='hr_icon_display']" position="replace">
+                <field name="hr_icon_display" widget="badge"
+                       decoration-success="hr_icon_display in ('presence_present','presence_office')"
+                       decoration-warning="hr_icon_display in ('presence_out_of_working_hour','presence_home','presence_other')"
+                       decoration-danger="hr_icon_display in ('presence_absent')"
+                       decoration-info="hr_icon_display in ('presence_holiday_present','presence_holiday_absent')"
+                       decoration-muted="hr_icon_display in ('presence_archive','presence_undetermined')"/>
+
+            </xpath>
+        </field>
+    </record>
+    <record id="hr_employee_view_search_inherit_zk" model="ir.ui.view">
+        <field name="name">hr.employee.search.zk</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="field[@name='name']" position="before">
+                <field name="zk_badge_no"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ─── Enrolled Users ─────────────────────────────────────────────────── -->
+    <record id="view_zk_enrolled_user_list" model="ir.ui.view">
+        <field name="name">zk.enrolled.user.list</field>
+        <field name="model">zk.enrolled.user</field>
+        <field name="arch" type="xml">
+            <list string="Enrolled Users">
+                <field name="pin"/>
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="privilege"/>
+                <field name="card"/>
+                <field name="source_device_id"/>
+                        <field name="enrolled_device_ids" widget="many2many_tags" readonly="1"/>
+                <field name="enrolled_device_count" string="# Enrolled Devices"/>
+                <field name="fp_count" string="FPs"/>
+                <field name="face_count" string="Faces"/>
+                <field name="last_updated"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_zk_enrolled_user_search" model="ir.ui.view">
+    <field name="name">zk.enrolled.user.search</field>
+    <field name="model">zk.enrolled.user</field>
+    <field name="arch" type="xml">
+        <search string="Search Enrolled Users">
+
+            <!-- 🔍 Quick Search -->
+            <field name="pin"/>
+            <field name="name"/>
+            <field name="employee_id"/>
+
+            <filter name="filter_admin"
+                    string="Admins"
+                    domain="[('privilege', '=', 'admin')]"/>
+
+        </search>
+    </field>
+</record>
+
+    <record id="view_zk_enrolled_user_form" model="ir.ui.view">
+        <field name="name">zk.enrolled.user.form</field>
+        <field name="model">zk.enrolled.user</field>
+        <field name="arch" type="xml">
+            <form string="Enrolled User">
+                <header>
+                    <button name="%(action_zk_user_sync_wizard)d"
+                            string="Sync to Devices"
+                            type="action"
+                            class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-hand-paper-o">
+                            <field name="fp_count" widget="statinfo" string="Fingerprints"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-server">
+                            <field name="enrolled_device_count" widget="statinfo" string="Devices"/>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-user-circle-o">
+                            <field name="face_count" widget="statinfo" string="Face Templates"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Name on device"/></h1>
+                    </div>
+                    <group>
+                        <group string="Identity">
+                            <field name="pin"/>
+                            <field name="employee_id"/>
+                            <field name="privilege"/>
+                            <field name="verify_style"/>
+                        </group>
+                        <group string="Credentials">
+                            <field name="password" password="True"/>
+                            <field name="card"/>
+                            <field name="group"/>
+                            <field name="time_zone"/>
+                        </group>
+                    </group>
+                    <group string="Tracking">
+                        <field name="source_device_id"/>
+                        <field name="enrolled_device_ids" widget="many2many_tags" readonly="1"/>
+                <field name="enrolled_device_count" string="# Enrolled Devices"/>
+                        <field name="last_updated" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Fingerprints" name="fingerprints">
+                            <field name="fingerprint_ids">
+                                <list editable="bottom">
+                                    <field name="finger_id"/>
+                                    <field name="valid"/>
+                                    <field name="source_device_id"/>
+                        <field name="enrolled_device_ids" widget="many2many_tags" readonly="1"/>
+                                    <field name="template" widget="char" string="Template (truncated)" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Face Templates" name="faces">
+                            <field name="face_ids">
+                                <list editable="bottom">
+                                    <field name="face_id"/>
+                                    <field name="valid"/>
+                                    <field name="source_device_id"/>
+                        <field name="enrolled_device_ids" widget="many2many_tags" readonly="1"/>
+                                    <field name="template" widget="text" string="Template (truncated)" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_zk_enrolled_user" model="ir.actions.act_window">
+        <field name="name">Enrolled Users</field>
+        <field name="res_model">zk.enrolled.user</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ─── Command Queue ──────────────────────────────────────────────────── -->
+    <record id="view_zk_command_list" model="ir.ui.view">
+        <field name="name">zk.device.command.list</field>
+        <field name="model">zk.device.command</field>
+        <field name="arch" type="xml">
+            <list string="Command Queue"
+                  decoration-success="state == 'done'"
+                  decoration-danger="state == 'failed'"
+                  decoration-warning="state == 'sent'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="id" string="#"/>
+                <field name="device_id"/>
+                <field name="command_type"/>
+                <field name="note"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state == 'sent'"
+                       decoration-muted="state == 'cancelled'"
+                       decoration-danger="state == 'failed'"
+                       decoration-info="state == 'pending'"/>
+                <field name="cmd_id" string="Device CMD ID"/>
+                <field name="result_code" string="Return"/>
+                <field name="created_by"/>
+                <field name="create_date" string="Queued"/>
+                <field name="sent_at" optional="show"/>
+                <field name="done_at" optional="show"/>
+                <button name="action_cancel" type="object" string="Cancel"
+                        icon="fa-times" invisible="state not in ['pending','sent']"/>
+                <button name="action_retry"  type="object" string="Retry"
+                        icon="fa-refresh"  invisible="state not in ['failed','cancelled']"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_zk_command_form" model="ir.ui.view">
+        <field name="name">zk.device.command.form</field>
+        <field name="model">zk.device.command</field>
+        <field name="arch" type="xml">
+            <form string="Device Command">
+                <header>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            class="btn-secondary"
+                            invisible="state not in ['pending','sent']"/>
+                    <button name="action_retry" type="object" string="Retry"
+                            class="btn-primary"
+                            invisible="state not in ['failed','cancelled']"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,sent,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="device_id"/>
+                            <field name="command_type"/>
+                            <field name="note"/>
+                            <field name="priority"/>
+                        </group>
+                        <group>
+                            <field name="cmd_id" readonly="1"/>
+                            <field name="result_code" readonly="1"/>
+                            <field name="created_by" readonly="1"/>
+                            <field name="sent_at" readonly="1"/>
+                            <field name="done_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Command">
+                        <field name="command_string" widget="text" nolabel="1"/>
+                    </group>
+                    <group string="Result" invisible="not result_raw">
+                        <field name="result_raw" readonly="1" widget="text" nolabel="1"/>
+                        <field name="error_msg" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="action_zk_command_queue" model="ir.actions.act_window">
+        <field name="name">Command Queue</field>
+        <field name="res_model">zk.device.command</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

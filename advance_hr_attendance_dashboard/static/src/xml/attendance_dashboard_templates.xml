@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<template id="template" xml:space="preserve">
+<t t-name="AttendanceDashboard" owl="1">
+<div class="ahad_wrapper" t-ref="attendance-dashboard">
+
+    <!-- ═══ LEAVE CREATION POPUP ════════════════════════════════════════ -->
+    <div class="ahad_overlay" t-if="state.popup.visible" t-on-click.self="onPopupCancel">
+        <div class="ahad_popup">
+            <div class="ahad_popup_header">
+                <span class="ahad_popup_icon">🗓️</span>
+                <div>
+                    <div class="ahad_popup_title">Create Leave Request</div>
+                    <div class="ahad_popup_sub" t-out="state.popup.empName"/>
+                </div>
+                <button class="ahad_popup_close" t-on-click="onPopupCancel">✕</button>
+            </div>
+            <div class="ahad_popup_body">
+                <div class="ahad_popup_row">
+                    <label class="ahad_label">Leave Type</label>
+                    <select class="ahad_select ahad_popup_full" t-on-change="onPopupTypeChange">
+                        <t t-foreach="state.popup.leaveTypes" t-as="leaveType" t-key="leaveType.id">
+                            <option t-att-value="leaveType.id"
+                                    t-att-selected="leaveType.id === state.popup.selectedType"
+                                    t-out="leaveType.name"/>
+                        </t>
+                    </select>
+                </div>
+                <div class="ahad_popup_row2">
+                    <div>
+                        <label class="ahad_label">From</label>
+                        <input type="date" class="ahad_select" t-att-value="state.popup.dateFrom" t-on-change="onPopupDateFromChange"/>
+                    </div>
+                    <div>
+                        <label class="ahad_label">To</label>
+                        <input type="date" class="ahad_select" t-att-value="state.popup.dateTo" t-on-change="onPopupDateToChange"/>
+                    </div>
+                </div>
+            </div>
+            <div class="ahad_popup_footer">
+                <button class="ahad_btn ahad_btn_ghost" t-on-click="onPopupCancel">Cancel</button>
+                <button class="ahad_btn ahad_btn_primary" t-on-click="onPopupSubmit">Submit Leave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ SWAP DAY POPUP ══════════════════════════════════════════════ -->
+    <div class="ahad_overlay" t-if="state.swapPopup.visible" t-on-click.self="onSwapPopupCancel">
+        <div class="ahad_popup ahad_swap_popup">
+            <div class="ahad_popup_header">
+                <span class="ahad_popup_icon">🔄</span>
+                <div>
+                    <div class="ahad_popup_title">Swap Day Request</div>
+                    <div class="ahad_popup_sub" t-out="state.swapPopup.empName"/>
+                </div>
+                <button class="ahad_popup_close" t-on-click="onSwapPopupCancel">✕</button>
+            </div>
+            <div class="ahad_popup_body">
+                <div class="ahad_popup_row">
+                    <label class="ahad_label">Will Work On</label>
+                    <input type="date" class="ahad_select ahad_popup_full" t-att-value="state.swapPopup.workDate" readonly="1"/>
+                </div>
+                <div class="ahad_popup_row">
+                    <label class="ahad_label">Type of Worked Day</label>
+                    <select class="ahad_select ahad_popup_full" t-on-change="onSwapWorkTypeChange">
+                        <option value="weekend" t-att-selected="state.swapPopup.workType === 'weekend'">Weekly Day Off</option>
+                        <option value="holiday" t-att-selected="state.swapPopup.workType === 'holiday'">Public Holiday</option>
+                    </select>
+                </div>
+                <div class="ahad_popup_row">
+                    <label class="ahad_label">Compensatory Off Date</label>
+                    <input type="date" class="ahad_select ahad_popup_full" t-att-value="state.swapPopup.offDate" t-on-change="onSwapOffDateChange"/>
+                </div>
+                <div class="ahad_popup_row">
+                    <label class="ahad_label">Reason</label>
+                    <textarea class="ahad_textarea ahad_popup_full" rows="2" placeholder="Reason for swap (optional)…" t-on-input="onSwapReasonChange"/>
+                </div>
+            </div>
+            <div class="ahad_popup_footer">
+                <button class="ahad_btn ahad_btn_ghost" t-on-click="onSwapPopupCancel">Cancel</button>
+                <button class="ahad_btn ahad_btn_outline" t-on-click="onOpenSwapInOdoo">Open Full Form</button>
+                <button class="ahad_btn ahad_btn_primary" t-on-click="onSwapPopupSubmit">Submit Swap</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ EXPORT PDF MODAL ════════════════════════════════════════════ -->
+    <div class="ahad_overlay" t-if="state.exportModal.visible" t-on-click.self="onExportModalCancel">
+        <div class="ahad_popup ahad_export_popup">
+            <div class="ahad_popup_header">
+                <span class="ahad_popup_icon">📄</span>
+                <div>
+                    <div class="ahad_popup_title">Export PDF Report</div>
+                    <div class="ahad_popup_sub">Choose which data to include</div>
+                </div>
+                <button class="ahad_popup_close" t-on-click="onExportModalCancel">✕</button>
+            </div>
+            <div class="ahad_popup_body">
+
+                <!-- Departments -->
+                <div class="ahad_popup_row ahad_export_section">
+                    <label class="ahad_label">Departments</label>
+                    <div class="ahad_export_options">
+                        <!-- Select All row -->
+                        <label class="ahad_export_select_all">
+                            <input type="checkbox"
+                                   t-att-checked="state.exportModal.allDeptsChecked"
+                                   t-on-change="onExportDeptSelectAll"/>
+                            Select All
+                        </label>
+                        <t t-foreach="state.exportModal.departments" t-as="dept" t-key="dept.id">
+                            <label class="ahad_export_option">
+                                <input type="checkbox"
+                                       t-att-checked="isExportDeptChecked(dept.id)"
+                                       t-on-change="(ev) => this.onExportDeptToggle(ev, dept.id)"/>
+                                <t t-out="dept.name"/>
+                            </label>
+                        </t>
+                        <t t-if="!state.exportModal.departments.length">
+                            <span style="color:#94a3b8;font-size:12px;padding:4px;">No departments found</span>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Worker Types -->
+                <div class="ahad_popup_row ahad_export_section">
+                    <label class="ahad_label">Worker Types</label>
+                    <div class="ahad_export_options" style="max-height:110px;">
+                        <label class="ahad_export_select_all">
+                            <input type="checkbox"
+                                   t-att-checked="state.exportModal.allTypesChecked"
+                                   t-on-change="onExportTypeSelectAll"/>
+                            Select All
+                        </label>
+                        <t t-foreach="state.exportModal.workerTypes" t-as="wtype" t-key="wtype.id">
+                            <label class="ahad_export_option">
+                                <input type="checkbox"
+                                       t-att-checked="isExportTypeChecked(wtype.id)"
+                                       t-on-change="(ev) => this.onExportTypeToggle(ev, wtype.id)"/>
+                                <t t-out="wtype.name"/>
+                            </label>
+                        </t>
+                        <t t-if="!state.exportModal.workerTypes.length">
+                            <span style="color:#94a3b8;font-size:12px;padding:4px;">No worker types found</span>
+                        </t>
+                    </div>
+                </div>
+
+            </div>
+            <div class="ahad_popup_footer">
+                <button class="ahad_btn ahad_btn_ghost" t-on-click="onExportModalCancel">Cancel</button>
+                <button class="ahad_btn ahad_btn_primary"
+                        t-att-disabled="state.exportModal.generating"
+                        t-on-click="onExportConfirm">
+                    <t t-if="state.exportModal.generating">
+                        <i class="fa fa-spinner fa-spin"/> Generating…
+                    </t>
+                    <t t-else="">
+                        <i class="fa fa-download"/> Download PDF
+                    </t>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ HEADER ══════════════════════════════════════════════════════ -->
+    <div class="ahad_header">
+        <div class="ahad_header_left">
+            <span class="ahad_title_icon">📋</span>
+            <div>
+                <h4 class="ahad_title">HR Attendance Dashboard</h4>
+                <span class="ahad_subtitle">Employee attendance &amp; leave overview</span>
+            </div>
+        </div>
+        <div class="ahad_header_right">
+            <button class="ahad_btn ahad_btn_outline" t-on-click="onToggleLeaveSummary">
+                <t t-if="state.viewMode === 'attendance'">
+                    <i class="fa fa-list-alt"/> Leave Summary
+                </t>
+                <t t-else="">
+                    <i class="fa fa-table"/> Attendance View
+                </t>
+            </button>
+            <button class="ahad_btn ahad_btn_outline" t-on-click="_OnClickPdfReport" t-if="state.viewMode === 'attendance'">
+                <i class="fa fa-print"/> Export PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ TOOLBAR ═════════════════════════════════════════════════════ -->
+    <div class="ahad_toolbar">
+        <div class="ahad_filter_group">
+            <label class="ahad_label">Year</label>
+            <select class="ahad_select" t-on-change="onChangeYear">
+                <t t-foreach="yearOptions" t-as="yr" t-key="yr">
+                    <option t-att-value="yr" t-att-selected="yr === state.selectedYear" t-out="yr"/>
+                </t>
+            </select>
+        </div>
+        <div class="ahad_filter_group" t-if="state.viewMode === 'attendance'">
+            <label class="ahad_label">Month</label>
+            <select class="ahad_select" t-on-change="onChangeMonth">
+                <t t-foreach="monthOptions" t-as="mo" t-key="mo.v">
+                    <option t-att-value="mo.v" t-att-selected="mo.v === state.selectedMonth" t-out="mo.l"/>
+                </t>
+            </select>
+        </div>
+        <div class="ahad_filter_group">
+            <label class="ahad_label">Department</label>
+            <select class="ahad_select" t-on-change="onChangeDepartment">
+                <option value="" t-att-selected="!state.selectedDepartment">All Departments</option>
+                <t t-foreach="departmentOptions" t-as="dept" t-key="dept.id">
+                    <option t-att-value="dept.id" t-att-selected="dept.id === state.selectedDepartment" t-out="dept.name"/>
+                </t>
+            </select>
+        </div>
+        <div class="ahad_filter_group">
+            <label class="ahad_label">Worker Type</label>
+            <select class="ahad_select" t-on-change="onChangeWorkerType">
+                <option value="" t-att-selected="!state.selectedWorkerType">All Types</option>
+                <t t-foreach="workerTypeOptions" t-as="wtype" t-key="wtype.id">
+                    <option t-att-value="wtype.id" t-att-selected="wtype.id === state.selectedWorkerType" t-out="wtype.name"/>
+                </t>
+            </select>
+        </div>
+        <div class="ahad_search_group">
+            <label class="ahad_label">Search</label>
+            <div class="ahad_search_box">
+                <i class="fa fa-search ahad_search_icon"/>
+                <input type="text" id="search-bar" class="ahad_search_input"
+                       placeholder="Name or Badge No…"
+                       t-on-input="onSearchInput"
+                       t-on-keydown="onSearchKeydown"/>
+                <button class="ahad_search_btn" t-on-click="onClickSearch">Search</button>
+            </div>
+        </div>
+        <div class="ahad_perpage_group">
+            <label class="ahad_label">Rows</label>
+            <select class="ahad_select ahad_select_sm" t-on-change="onChangePerPage">
+                <option value="5" selected="1">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ═══ LEGEND ══════════════════════════════════════════════════════ -->
+    <div class="ahad_legend" t-if="state.viewMode === 'attendance' and state.filteredDurationDates.length">
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#d4edda;"/> Present</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#ffb366;"/> Late</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#fff3cd;"/> Absent</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#b0bec5;"/> Weekly Off</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#c8e6c9;"/> Public Holiday</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#e1bee7;"/> Adjust (Swap)</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#F06050;"/> Leave</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#78909c;"/> OFF/P (Present on day-off)</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#80cbc4;"/> PH/P (Present on holiday)</span>
+        <span class="ahad_legend_tip">💡 Click absent → Create leave | Click OFF/PH → Swap | Click OFF/P or PH/P → Attendance | Right-click OFF/P or PH/P → Create Swap/OT</span>
+    </div>
+    <div class="ahad_legend" t-if="state.viewMode === 'leaveSummary'">
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#6CC1ED;"/> SL — Sick Leave</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#30C381;"/> CL — Casual Leave</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#F06050;"/> LWP — Leave Without Pay</span>
+        <span class="ahad_legend_tip">💡 Day-counts per employee, per month, for <t t-out="state.selectedYear"/> (Asia/Dhaka)</span>
+    </div>
+
+    <!-- ═══ LOADING ══════════════════════════════════════════════════════ -->
+    <div class="ahad_loading" t-if="state.loading">
+        <div class="ahad_spinner"/>
+        <span>Loading…</span>
+    </div>
+
+    <t t-elif="state.viewMode === 'attendance'">
+        <!-- ═══ EMPTY STATE (attendance) ═══════════════════════════════════ -->
+        <div class="ahad_empty" t-if="!state.filteredDurationDates.length">
+            <span class="ahad_empty_icon">📅</span>
+            <p>No data available for the selected period.</p>
+        </div>
+
+        <!-- ═══ TABLE (attendance) ═════════════════════════════════════════ -->
+        <div class="ahad_table_outer" t-else="">
+            <div class="ahad_table_scroll">
+                <table class="ahad_table" id="attendance_table_nm" t-on-mouseleave="_clearDragHighlight">
+                    <thead>
+                        <tr>
+                            <th class="ahad_th_sticky ahad_th_emp">Employee</th>
+                            <th class="ahad_th_sticky ahad_th_badge">Badge</th>
+                            <th class="ahad_th_sticky ahad_th_dept">Department</th>
+                            <th class="ahad_th_sticky ahad_th_dayoff">Day Off</th>
+                            <!-- Pres count LEFT — sticky -->
+                            <th class="ahad_th_summary ahad_th_sticky ahad_th_pres">Pres</th>
+                            <!-- Abs count LEFT — sticky -->
+                            <th class="ahad_th_summary ahad_th_sticky ahad_th_abs">Abs</th>
+                            <!-- Date columns -->
+                            <t t-foreach="state.filteredDurationDates" t-as="tDate" t-key="tDate_index">
+                                <th class="ahad_th_date" t-out="formatDateHeader(tDate)"/>
+                            </t>
+                            <th class="ahad_th_summary">Summary</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-if="!state.employeeData.length">
+                            <tr>
+                                <td t-att-colspan="state.filteredDurationDates.length + 7" class="ahad_no_data">No employees found.</td>
+                            </tr>
+                        </t>
+                        <tr t-foreach="state.employeeData" t-as="employee"
+                            t-key="employee.id"
+                            t-att-data-emp-id="employee.id">
+                            <!-- Employee (fixed width) -->
+                            <td class="ahad_td_sticky ahad_td_emp ahad_clickable"
+                                t-on-click="() => this.onClickEmployee(employee.id)"
+                                title="Open employee record">
+                                <span class="ahad_avatar" t-out="employee.name[0]"/>
+                                <span class="ahad_emp_name" t-out="employee.name"/>
+                            </td>
+                            <!-- Badge -->
+                            <td class="ahad_td_sticky ahad_td_badge" t-out="employee.zk_badge_no or '—'"/>
+                            <!-- Department -->
+                            <td class="ahad_td_sticky ahad_td_dept" t-out="employee.department or '—'"/>
+                            <!-- Day off -->
+                            <td class="ahad_td_sticky ahad_td_dayoff" t-out="employee.day_off or '—'"/>
+                            <!-- Pres count — LEFT sticky -->
+                            <td class="ahad_td_summary ahad_td_sticky ahad_td_pres">
+                                <span t-att-class="employee.total_present_count > 0 ? 'ahad_chip ahad_chip_green' : 'ahad_chip ahad_chip_red'"
+                                      t-out="employee.total_present_count"/>
+                            </td>
+                            <!-- Abs count — LEFT sticky -->
+                            <td class="ahad_td_summary ahad_td_sticky ahad_td_abs">
+                                <span t-att-class="employee.total_absent_count > 0 ? 'ahad_chip ahad_chip_red' : 'ahad_chip ahad_chip_green'"
+                                      t-out="employee.total_absent_count"/>
+                            </td>
+                            <!-- Date cells -->
+                            <t t-foreach="employee.leave_data" t-as="leave" t-key="leave_index">
+                                <td t-attf-class="ahad_td_cell {{ leave.is_day_off_or_holiday and (leave.state == 'OFF/P' and 'ahad_split_off_p' or 'ahad_split_ph_p') or cellCursor(leave) }}"
+                                    t-attf-style="{{ leave.is_day_off_or_holiday and '' or ('background:' + leave.color + ';') }}"
+                                    t-att-title="leave.tooltip or ''"
+                                    t-att-data-date="leave.leave_date"
+                                    t-att-data-rtype="leave.record_type"
+                                    t-on-click="(ev) => this.onClickCell(leave, employee.id)"
+                                    t-on-mousedown="(ev) => this.onMouseDownCell(ev, leave, employee.id)"
+                                    t-on-mouseenter="(ev) => this.onMouseEnterCell(ev, leave, employee.id)"
+                                    t-on-mouseup="(ev) => this.onMouseUpCell(ev, leave, employee.id)">
+                                    <!-- Split cell: two independent triangular click zones -->
+                                    <t t-if="leave.is_day_off_or_holiday">
+                                        <!-- top-left triangle → swap action -->
+                                        <div class="ahad_zone_top"
+                                             t-att-title="leave.state == 'OFF/P' and 'Weekly off – click to create swap' or 'Public holiday – click to create swap'"
+                                             t-on-click="(ev) => this.onClickSplitTop(ev, leave, employee.id)">
+                                            <t t-out="leave.state == 'OFF/P' and 'OFF' or 'PH'"/>
+                                        </div>
+                                        <!-- bottom-right triangle → attendance form -->
+                                        <div class="ahad_zone_bot"
+                                             title="Present – click to view attendance"
+                                             t-on-click="(ev) => this.onClickSplitBot(ev, leave, employee.id)">P</div>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="ahad_cell_lbl" t-out="leave.state or ''"/>
+                                    </t>
+                                </td>
+                            </t>
+                            <!-- Summary -->
+                            <td class="ahad_td_summary ahad_td_breakdown">
+                                <t t-foreach="Object.entries(employee.leave_counts || {})" t-as="lc" t-key="lc[0]">
+                                    <span class="ahad_lc_chip"><t t-out="lc[0]"/>:<strong t-out="lc[1]"/></span>
+                                </t>
+                                <t t-if="!Object.keys(employee.leave_counts || {}).length">
+                                    <span class="ahad_lc_none">—</span>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot t-if="state.employeeData.length">
+                        <tr class="ahad_tfoot">
+                            <td class="ahad_td_sticky ahad_td_emp ahad_foot_label" colspan="4">Leave Summary</td>
+                            <td class="ahad_td_summary ahad_td_sticky ahad_td_pres ahad_foot_label"/>
+                            <td class="ahad_td_summary ahad_td_sticky ahad_td_abs ahad_foot_label"/>
+                            <td t-att-colspan="state.filteredDurationDates.length"/>
+                            <td class="ahad_td_summary ahad_td_breakdown">
+                                <t t-foreach="footerLeaveCounts" t-as="fc" t-key="fc.code">
+                                    <span class="ahad_lc_chip ahad_lc_chip_footer">
+                                        <t t-out="fc.code"/>:<strong t-out="fc.cnt"/>
+                                    </span>
+                                </t>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </t>
+
+    <t t-else="">
+        <!-- ═══ EMPTY STATE (leave summary) ════════════════════════════════ -->
+        <div class="ahad_empty" t-if="!state.leaveSummaryData.length">
+            <span class="ahad_empty_icon">🗒️</span>
+            <p>No employees found for the selected filters.</p>
+        </div>
+
+        <!-- ═══ TABLE (leave summary — 12 months × SL/CL/LWP = 36 cols) ════ -->
+        <div class="ahad_table_outer" t-else="">
+            <div class="ahad_table_scroll">
+                <table class="ahad_table" id="leave_summary_table_nm">
+                    <thead>
+                        <tr>
+                            <th class="ahad_th_sticky ahad_th_emp" rowspan="2">Employee</th>
+                            <th class="ahad_th_sticky ahad_th_badge" rowspan="2">Badge</th>
+                            <th class="ahad_th_sticky ahad_th_dept" rowspan="2">Department</th>
+                            <t t-foreach="leaveSummaryMonthLabels" t-as="mLabel" t-key="mLabel_index">
+                                <th class="ahad_th_date" colspan="3" t-out="mLabel"/>
+                            </t>
+                        </tr>
+                        <tr>
+                            <t t-foreach="leaveSummaryMonthLabels" t-as="mLabel2" t-key="mLabel2_index">
+                                <th style="min-width:36px;font-size:10px;padding:3px 2px;background:#6CC1ED22;color:#0b5f8a;">SL</th>
+                                <th style="min-width:36px;font-size:10px;padding:3px 2px;background:#30C38122;color:#1b6b45;">CL</th>
+                                <th style="min-width:38px;font-size:10px;padding:3px 2px;background:#F0605022;color:#96261b;">LWP</th>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-if="!state.leaveSummaryData.length">
+                            <tr>
+                                <td colspan="39" class="ahad_no_data">No employees found.</td>
+                            </tr>
+                        </t>
+                        <tr t-foreach="state.leaveSummaryData" t-as="employee" t-key="employee.id">
+                            <td class="ahad_td_sticky ahad_td_emp ahad_clickable"
+                                t-on-click="() => this.onClickEmployee(employee.id)"
+                                title="Open employee record">
+                                <span class="ahad_avatar" t-out="employee.name[0]"/>
+                                <span class="ahad_emp_name" t-out="employee.name"/>
+                            </td>
+                            <td class="ahad_td_sticky ahad_td_badge" t-out="employee.zk_badge_no or '—'"/>
+                            <td class="ahad_td_sticky ahad_td_dept" t-out="employee.department"/>
+                            <t t-foreach="employee.months" t-as="mData" t-key="mData_index">
+                                <td style="text-align:center;padding:4px 2px;font-size:12px;" t-attf-style="text-align:center;padding:4px 2px;font-size:12px;{{ leaveSummaryCellStyle('sl', mData.sl) }}" t-out="mData.sl"/>
+                                <td style="text-align:center;padding:4px 2px;font-size:12px;" t-attf-style="text-align:center;padding:4px 2px;font-size:12px;{{ leaveSummaryCellStyle('cl', mData.cl) }}" t-out="mData.cl"/>
+                                <td style="text-align:center;padding:4px 2px;font-size:12px;" t-attf-style="text-align:center;padding:4px 2px;font-size:12px;{{ leaveSummaryCellStyle('lwp', mData.lwp) }}" t-out="mData.lwp"/>
+                            </t>
+                        </tr>
+                    </tbody>
+                    <tfoot t-if="state.leaveSummaryData.length">
+                        <tr class="ahad_tfoot">
+                            <td class="ahad_td_sticky ahad_td_emp ahad_foot_label" colspan="3">Totals</td>
+                            <t t-foreach="leaveSummaryFooterTotals" t-as="fTotal" t-key="fTotal_index">
+                                <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:bold;" t-out="fTotal.sl"/>
+                                <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:bold;" t-out="fTotal.cl"/>
+                                <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:bold;" t-out="fTotal.lwp"/>
+                            </t>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </t>
+
+    <!-- ═══ PAGINATION ══════════════════════════════════════════════════ -->
+    <div class="ahad_pagination" t-if="state.totalCount and !state.loading">
+        <span class="ahad_page_info" t-out="paginationInfo"/>
+        <div class="ahad_page_controls">
+            <button class="ahad_page_btn" t-att-disabled="state.page &lt; 1" t-on-click="onPrevPage">‹ Prev</button>
+            <input class="ahad_page_input" type="number"
+                   t-att-min="1" t-att-max="state.totalPages"
+                   t-att-value="state.page"
+                   t-on-change="onGoToPage"/>
+            <span class="ahad_page_of">of <t t-out="state.totalPages"/></span>
+            <button class="ahad_page_btn" t-att-disabled="state.page >= state.totalPages" t-on-click="onNextPage">Next ›</button>
+        </div>
+    </div>
+
+</div>
+</t>
+</template>
