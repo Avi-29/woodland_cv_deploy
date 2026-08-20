@@ -36,6 +36,8 @@ COMMAND_TYPES = [
     # Face
     ('enroll_face',        'Enroll Face'),
     ('delete_face',        'Delete Face'),
+    # Photo
+    ('enroll_userpic',     'Push User Photo'),
     # Card
     ('enroll_card',        'Enroll Card'),
     ('delete_card',        'Delete Card'),
@@ -180,6 +182,6 @@ class ZkDeviceCommand(models.Model):
             'done_at': fields.Datetime.now(),
             'error_msg': None if success else f'Device returned code {return_code}',
         })
-        _logger.info('ZK CMD %s for device %s: %s (code %s)',
-                     cmd.command_type, device.serial_number,
-                     'OK' if success else 'FAILED', return_code)
+        _logger.debug('ZK CMD %s for device %s: %s (code %s)',
+                      cmd.command_type, device.serial_number,
+                      'OK' if success else 'FAILED', return_code)

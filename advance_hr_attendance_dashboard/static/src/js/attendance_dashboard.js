@@ -1,5 +1,5 @@
 /* @odoo-module */
-import { Component, useState, useRef, onMounted } from "@odoo/owl";
+import { Component, useState, useRef, onMounted, onWillUnmount } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -72,6 +72,9 @@ class AttendanceDashboard extends Component {
             // ── Leave Summary grid (toggled in place of the attendance table) ──
             viewMode:         'attendance',   // 'attendance' | 'leaveSummary'
             leaveSummaryData: [],
+            // ── Live "present today" counter (header button) ───────────────
+            presentCount:     0,
+            presentTotal:     0,
         });
 
         this._drag = {
@@ -85,10 +88,16 @@ class AttendanceDashboard extends Component {
         this._searchTimer = null;
         this._departments = [];
         this._workerTypes = [];
+        this._liveTimer = null;
         onMounted(() => {
             this._loadDepartments();
             this._loadWorkerTypes();
             this._fetchData();
+            this._fetchPresentCount();
+            this._liveTimer = setInterval(() => this._fetchPresentCount(), 60000);
+        });
+        onWillUnmount(() => {
+            if (this._liveTimer) clearInterval(this._liveTimer);
         });
     }
 
@@ -165,6 +174,23 @@ class AttendanceDashboard extends Component {
         }
     }
 
+    // Live count of employees checked in today (Asia/Dhaka), scoped to the
+    // current Department / Worker Type filters.
+    async _fetchPresentCount() {
+        try {
+            const result = await this.orm.call(
+                'hr.employee',
+                'get_present_today_count',
+                [this.state.selectedDepartment, this.state.selectedWorkerType]
+            );
+            this.state.presentCount = result.present_count;
+            this.state.presentTotal = result.total_count;
+        } catch (e) {
+            // Silent — this is a secondary indicator, not worth an error toast.
+        }
+    }
+    onClickPresentCounter() { this._fetchPresentCount(); }
+
     // Toggle between the attendance grid and the leave summary grid,
     // reusing the same toolbar filters and pagination as the dashboard.
     onToggleLeaveSummary() {
@@ -179,12 +205,12 @@ class AttendanceDashboard extends Component {
     onChangeDepartment(ev) {
         const val = ev.target.value;
         this.state.selectedDepartment = val ? parseInt(val, 10) : null;
-        this.state.page = 1; this._fetchData();
+        this.state.page = 1; this._fetchData(); this._fetchPresentCount();
     }
     onChangeWorkerType(ev) {
         const val = ev.target.value;
         this.state.selectedWorkerType = val || null;
-        this.state.page = 1; this._fetchData();
+        this.state.page = 1; this._fetchData(); this._fetchPresentCount();
     }
     onSearchInput(ev) {
         clearTimeout(this._searchTimer);
@@ -512,25 +538,12 @@ class AttendanceDashboard extends Component {
     // Cell styling for an SL/CL/LWP count in the leave summary grid.
     leaveSummaryCellStyle(code, count) {
         const colors = { sl: '#6CC1ED', cl: '#30C381', lwp: '#F06050' };
-        if (!count) return 'background:#f8f9fa;color:#c3c9d1;';
-        return `background:${colors[code]}22;color:${colors[code]};font-weight:700;`;
+        if (!count) return 'background:#f8f9fa;color:#94a3b8;';
+        return `background:${colors[code]}40;color:${colors[code]};font-weight:700;`;
     }
 
     get leaveSummaryMonthLabels() {
         return ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    }
-
-    // Column totals (SL/CL/LWP per month) across the current page, for the footer row.
-    get leaveSummaryFooterTotals() {
-        const totals = Array.from({ length: 12 }, () => ({ sl: 0, cl: 0, lwp: 0 }));
-        for (const emp of this.state.leaveSummaryData) {
-            emp.months.forEach((m, i) => {
-                totals[i].sl  += m.sl;
-                totals[i].cl  += m.cl;
-                totals[i].lwp += m.lwp;
-            });
-        }
-        return totals;
     }
 
     // ══════════════════════════════════════════════ HELPERS
@@ -562,14 +575,6 @@ class AttendanceDashboard extends Component {
         const s = (this.state.page - 1) * this.state.perPage + 1;
         const e = Math.min(this.state.page * this.state.perPage, this.state.totalCount);
         return this.state.totalCount ? `${s}–${e} of ${this.state.totalCount}` : '0';
-    }
-
-    get footerLeaveCounts() {
-        const agg = {};
-        for (const emp of this.state.employeeData) {
-            for (const [code, cnt] of Object.entries(emp.leave_counts || {})) agg[code] = (agg[code] || 0) + cnt;
-        }
-        return Object.entries(agg).map(([code, cnt]) => ({ code, cnt }));
     }
 
     // Helper: is a dept checked in export modal?

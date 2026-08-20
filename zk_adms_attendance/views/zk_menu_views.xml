@@ -41,6 +41,13 @@
               sequence="50"
               />
 
+    <menuitem id="menu_zk_operlog_raw"
+              name="OPERLOG Batch Queue"
+              parent="menu_zk_root"
+              action="action_zk_operlog_raw"
+              sequence="45"
+              />
+
     <menuitem id="menu_zk_config"
               name="Configuration"
               parent="menu_zk_root"

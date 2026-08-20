@@ -40,6 +40,12 @@ class ZkEnrolledUser(models.Model):
 
     pin = fields.Char(string='PIN / Badge No', required=True, index=True)
     name = fields.Char(string='Name on Device')
+    active = fields.Boolean(
+        default=True,
+        help='Unchecked when the employee is archived/deleted — the enrollment '
+             'record and its history are kept, but it is excluded from sync and '
+             'device data has been deleted. Re-checked automatically on reactivate.',
+    )
 
     employee_id = fields.Many2one(
         'hr.employee', string='Employee',
@@ -74,6 +80,15 @@ class ZkEnrolledUser(models.Model):
 
     enrolled_device_count = fields.Integer(
         compute='_compute_device_count', string='# Devices',
+    )
+
+    photo_synced_device_ids = fields.Many2many(
+        'zk.device',
+        'zk_enrolled_user_photo_device_rel',
+        'user_id', 'device_id',
+        string='Devices With Current Photo',
+        help="Devices that already have this employee's current profile photo. "
+             "Cleared whenever the photo changes so the next sync redistributes it.",
     )
 
     last_updated = fields.Datetime(string='Last Updated')
@@ -225,7 +240,7 @@ class ZkEnrolledUser(models.Model):
         return 'DATA UPDATE USERINFO ' + '\t'.join(parts)
 
     def enqueue_to_devices(self, target_device_ids, force=False,
-                           include_fp=True, include_face=True):
+                           include_fp=True, include_face=True, include_photo=True):
         """
         Queue sync commands only for biometric data that is MISSING on each device.
 
@@ -233,6 +248,8 @@ class ZkEnrolledUser(models.Model):
         :param force: bypass the already-enrolled check (full re-sync)
         :param include_fp: include fingerprint commands
         :param include_face: include face commands
+        :param include_photo: include the employee's profile photo (shared as-is,
+               same picture on every device — not a per-device capture)
         :return: number of commands queued
         """
         CmdModel = self.env['zk.device.command']
@@ -241,6 +258,7 @@ class ZkEnrolledUser(models.Model):
 
         for user in self:
             already_has_user = set(user.enrolled_device_ids.ids)
+            already_has_photo = set(user.photo_synced_device_ids.ids)
 
             for device in devices:
                 # ── USERINFO ─────────────────────────────────────────────
@@ -282,7 +300,36 @@ class ZkEnrolledUser(models.Model):
                             queued += 1
                             face.enrolled_device_ids = [(4, device.id)]
 
+                # ── Photo (same picture pushed to every device) ───────────
+                if include_photo and user.employee_id.image_1920:
+                    if force or device.id not in already_has_photo:
+                        CmdModel.create({
+                            'device_id':      device.id,
+                            'command_type':   'enroll_userpic',
+                            'command_string': user.build_userpic_cmd(),
+                            'note':           f'Sync photo PIN={user.pin} ({user.name})',
+                        })
+                        queued += 1
+                        user.photo_synced_device_ids = [(4, device.id)]
+                        already_has_photo.add(device.id)
+
         return queued
+
+    def build_userpic_cmd(self) -> str:
+        """Build the ADMS command to push this employee's current Odoo
+        profile photo to a device — the same picture every time, so every
+        device that receives it shows the same photo."""
+        self.ensure_one()
+        content = self.employee_id.image_1920 or b''
+        if isinstance(content, bytes):
+            content = content.decode('ascii')
+        parts = [
+            f'PIN={self.pin}',
+            f'FileName={self.pin}.jpg',
+            f'Size={len(content)}',
+            f'Content={content}',
+        ]
+        return 'DATA UPDATE USERPIC ' + '\t'.join(parts)
 
     def action_clear_device_enrollment(self):
         """
@@ -291,6 +338,7 @@ class ZkEnrolledUser(models.Model):
         """
         for user in self:
             user.enrolled_device_ids = [(5,)]
+            user.photo_synced_device_ids = [(5,)]
             for fp in user.fingerprint_ids:
                 fp.enrolled_device_ids = [(5,)]
             for face in user.face_ids:
@@ -309,6 +357,31 @@ class ZkEnrolledUser(models.Model):
         self.ensure_one()
         return f"DATA DELETE USERINFO PIN={self.pin}"
 
+    def action_queue_delete(self):
+        """
+        Queue a DELETE USERINFO command to every online device — same
+        mechanism as the original delete-employee flow (confirmed to
+        remove face/fingerprint data on the actual hardware), just made
+        reusable so both the departure wizard and the manual "Remove From
+        Devices" button share one implementation.
+
+        :return: number of commands queued
+        """
+        Device = self.env['zk.device']
+        Cmd = self.env['zk.device.command']
+        devices = Device.search([('state', '=', 'online')])
+        queued = 0
+        for user in self:
+            for device in devices:
+                Cmd.create({
+                    'device_id':      device.id,
+                    'command_type':   'delete_user',
+                    'command_string': user.build_delete_cmd(),
+                    'note':           f'Delete user PIN={user.pin}',
+                })
+                queued += 1
+        return queued
+
 
 class ZkEnrolledFp(models.Model):
     _name = 'zk.enrolled.fp'
@@ -318,6 +391,7 @@ class ZkEnrolledFp(models.Model):
     user_id   = fields.Many2one('zk.enrolled.user', required=True, ondelete='cascade', index=True)
     finger_id = fields.Selection(FINGER_IDS, string='Finger', required=True, default='0')
     valid     = fields.Boolean(default=True)
+    active    = fields.Boolean(default=True)
     template  = fields.Text(string='Template (base64)')
     bio_type  = fields.Char(string='Bio Type', default='1')
     source_device_id = fields.Many2one('zk.device', string='Captured On', ondelete='set null')
@@ -377,6 +451,7 @@ class ZkEnrolledFace(models.Model):
     user_id   = fields.Many2one('zk.enrolled.user', required=True, ondelete='cascade', index=True)
     face_id   = fields.Selection(FACE_IDS, string='Face ID', required=True, default='0')
     valid     = fields.Boolean(default=True)
+    active    = fields.Boolean(default=True)
     template  = fields.Text(string='Template (base64)')
     bio_type  = fields.Char(string='Bio Type', default='9')
     major_ver = fields.Char(string='Major Ver')

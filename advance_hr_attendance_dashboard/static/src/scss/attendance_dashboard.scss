@@ -63,6 +63,20 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     background: transparent; color: #64748b;
     &:hover { background: #f1f5f9; }
 }
+.ahad_present_counter {
+    background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46;
+    &:hover { background: #d1fae5; }
+}
+.ahad_live_dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e; margin-right: 1px;
+    animation: ahad_live_pulse 1.6s ease-in-out infinite;
+}
+@keyframes ahad_live_pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); }
+    50%      { box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+.ahad_present_total { color: #059669; opacity: .72; font-weight: 500; }
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 .ahad_toolbar {
@@ -231,6 +245,7 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     width: 22px; height: 22px; border-radius: 50%;
     background: $pri-lt; color: $pri; font-size: 10px; font-weight: 700;
     flex-shrink: 0;
+    transition: background .15s, color .15s, box-shadow .15s;
 }
 .ahad_emp_name {
     flex: 1;
@@ -238,7 +253,15 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: color .15s;
 }
+
+// Currently checked-in today (Asia/Dhaka) — real-time presence indicator
+.ahad_avatar_present {
+    background: #22c55e; color: #fff;
+    box-shadow: 0 0 0 2px #bbf7d0;
+}
+.ahad_emp_name_present { color: #15803d; font-weight: 700; }
 
 // Day cells
 .ahad_td_cell {
@@ -276,6 +299,12 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
 .ahad_split_ph_p  .ahad_zone_top { color: #1b5e20; }
 .ahad_split_ph_p  .ahad_zone_bot { color: #1b5e20; }
 
+// Sandwich Absent — a weekly off flanked by two absent days, counted as
+// absent (payroll rule); ring differentiates it from a genuine no-show.
+.ahad_sandwich_absent {
+    box-shadow: inset 0 0 0 2px #f59e0b;
+}
+
 // Clickable / draggable
 .ahad_clickable      { cursor: pointer; &:hover { filter: brightness(.9); } }
 .ahad_cursor_absent  { cursor: crosshair; &:hover { filter: brightness(.93); } }
@@ -303,18 +332,7 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     background: #f1f5f9; border: 1px solid $border; border-radius: 4px;
     font-size: 10px; padding: 1px 5px; margin: 1px 2px;
 }
-.ahad_lc_chip_footer {
-    background: #ede9fe; border-color: #c4b5fd;
-    strong { color: $pri; }
-}
 .ahad_lc_none  { color: #94a3b8; font-size: 11px; }
-
-// Footer row
-.ahad_tfoot td {
-    background: #f1f5f9;
-    font-weight: 600;
-}
-.ahad_foot_label { font-size: 11px; color: #475569; }
 
 .ahad_no_data { text-align: center; padding: 28px; color: #94a3b8; font-size: 13px; }
 

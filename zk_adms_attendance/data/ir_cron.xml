@@ -8,7 +8,15 @@
             <field name="code">model.cron_check_offline()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+        <record id="ir_cron_zk_process_operlog_raw" model="ir.cron">
+            <field name="name">ZKTeco: Process OPERLOG Batch (Users/FP/Face)</field>
+            <field name="model_id" ref="zk_adms_attendance.model_zk_operlog_raw"/>
+            <field name="state">code</field>
+            <field name="code">model.process_batch()</field>
+            <field name="interval_number">2</field>
+            <field name="interval_type">minutes</field>
             <field name="active">True</field>
         </record>
     </data>

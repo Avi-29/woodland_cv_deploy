@@ -1,9 +1,12 @@
+import re
+
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
+    _order = 'zk_badge_no_int asc'
 
     zk_badge_no = fields.Char(
         string='ZKTeco Badge No (PIN)',
@@ -29,78 +32,190 @@ class HrEmployee(models.Model):
         string='ZK Punches',
         compute='_compute_zk_attendance_count',
     )
+    zk_departure_history_ids = fields.One2many(
+        'employee.departure.history', 'employee_id',
+        string='Departure History', readonly=True,
+    )
+
+    zk_badge_no_int = fields.Integer(
+        string='ZK Badge No (numeric)',
+        compute='_compute_zk_badge_no_int',
+        store=True,
+        index=True,
+        help='Numeric mirror of zk_badge_no, kept in sync automatically - '
+             'zk_badge_no is Char, so sorting/ordering on it (e.g. clicking '
+             'a list column, or a view default_order) is lexicographic '
+             '(1, 10, 11, 2, ...). Order by this field instead for real '
+             'numeric order. Employees without a numeric badge sort last.',
+    )
 
     _sql_constraints = [
         ('zk_badge_no_uniq', 'unique(zk_badge_no)',
          'ZKTeco Badge No must be unique per employee!'),
     ]
 
-
-    def action_archive_and_remove_from_devices(self):
-        Device = self.env['zk.device']
-        Cmd = self.env['zk.device.command']
-        Enrolled = self.env['zk.enrolled.user']
-
+    @api.depends('zk_badge_no')
+    def _compute_zk_badge_no_int(self):
+        # The badge format isn't guaranteed to be a clean number - the
+        # company can (and does) change convention over time, e.g.
+        # "31", "F-31", "32F" - so pull out just the digits (wherever
+        # they are) rather than requiring the whole value to be numeric.
+        # "F-31" and "32F" then sort as 31 and 32, not as a tie.
+        # No digits at all (blank, letters-only) falls back to the
+        # sentinel so it always sorts last, and this never raises.
         for emp in self:
+            digits = re.sub(r'\D', '', emp.zk_badge_no or '')
+            try:
+                emp.zk_badge_no_int = int(digits)
+            except ValueError:
+                emp.zk_badge_no_int = 999999999
 
-            if emp.zk_badge_no:
-            # 1️⃣ Find enrolled user
-                user = Enrolled.search([
-                    ('pin', '=', emp.zk_badge_no)
-                ], limit=1)
-                if user:
-                # 2️⃣ Get all devices
-                    devices = Device.search([('state', '=', 'online')])
+    @api.constrains('zk_badge_no')
+    def _check_zk_badge_no_unique(self):
+        # Fires on both create() and write() whenever zk_badge_no changes.
+        # The DB-level unique constraint (_sql_constraints above) can't
+        # currently be relied on: it was silently never installed because
+        # duplicate zk_badge_no rows already existed in the table when the
+        # module last upgraded (Odoo logs a warning and moves on rather
+        # than failing the upgrade). This check stops any *new* duplicates
+        # going forward regardless of that. active_test=False so an
+        # archived employee's badge can't be silently reused either -
+        # duplicates must be resolved (re-badge one of them) rather than
+        # just hidden by archiving.
+        for emp in self:
+            if not emp.zk_badge_no:
+                continue
+            duplicate = self.sudo().with_context(active_test=False).search([
+                ('zk_badge_no', '=', emp.zk_badge_no),
+                ('id', '!=', emp.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'ZKTeco Badge No "%s" is already assigned to %s%s. '
+                    'Badge numbers must be unique, even across archived employees.'
+                ) % (
+                    emp.zk_badge_no,
+                    duplicate.name,
+                    _(' (archived)') if not duplicate.active else '',
+                ))
 
-                    # 3️⃣ Send DELETE command
-                    for device in devices:
-                        Cmd.create({
-                            'device_id': device.id,
-                            'command_type': 'delete_user',
-                            'command_string': user.build_delete_cmd(),  # you must implement
-                            'note': f'Delete user PIN={user.pin}',
-                        })
-                    user.unlink()
-            # 4️⃣ Archive employee
-            emp.active = False
-
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'reload',
-        }
+    def write(self, vals):
+        res = super().write(vals)
+        if 'image_1920' in vals:
+            # Photo changed — forget which devices have the old picture so
+            # the next sync (wizard or auto-resync) pushes the new one
+            # everywhere instead of skipping devices that "already have a photo".
+            users = self.env['zk.enrolled.user'].sudo().search([('employee_id', 'in', self.ids)])
+            if users:
+                users.write({'photo_synced_device_ids': [(5,)]})
+        return res
 
     def action_remove_from_devices(self):
-        Device = self.env['zk.device']
-        Cmd = self.env['zk.device.command']
         Enrolled = self.env['zk.enrolled.user']
 
         for emp in self:
             if not emp.zk_badge_no:
                 continue
-
-            user = Enrolled.search([
-                ('pin', '=', emp.zk_badge_no)
-            ], limit=1)
-
-            if not user:
-                continue
-
-            devices = Device.search([('state', '=', 'online')])
-
-            for device in devices:
-                Cmd.create({
-                    'device_id': device.id,
-                    'command_type': 'delete_user',
-                    'command_string': user.build_delete_cmd(),
-                    'note': f'Delete user PIN={user.pin}',
-                })
+            user = Enrolled.search([('pin', '=', emp.zk_badge_no)], limit=1)
+            if user:
+                user.action_queue_delete()
 
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': 'Success',
-                'message': f'User removal command sent to all device(s).',
+                'message': 'User removal command sent to all device(s).',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+
+    def _zk_process_departure(self, departure_reason_id=False, note=False):
+        """
+        Called from the departure wizard (see hr_departure_wizard.py) when
+        an employee is archived: queue the device delete commands (same
+        mechanism as action_remove_from_devices), deactivate the
+        zk.enrolled.user record (and its fingerprints/faces) instead of
+        deleting it — so re-activating the employee later can restore and
+        re-sync it — and log the event to employee.departure.history.
+        """
+        Enrolled = self.env['zk.enrolled.user']
+        History = self.env['employee.departure.history']
+
+        for emp in self:
+            if not emp.zk_badge_no:
+                continue
+            user = Enrolled.search([
+                ('pin', '=', emp.zk_badge_no),
+                ('active', '=', True),
+            ], limit=1)
+            if not user:
+                continue
+
+            queued = user.action_queue_delete()
+            user.write({'active': False})
+            user.fingerprint_ids.write({'active': False})
+            user.face_ids.write({'active': False})
+
+            History.create({
+                'employee_id': emp.id,
+                'enrolled_user_id': user.id,
+                'badge_no': emp.zk_badge_no,
+                'action': 'departed',
+                'departure_reason_id': departure_reason_id or False,
+                'note': note or False,
+                'commands_queued': queued,
+            })
+
+    def action_unarchive_and_resync_devices(self):
+        """
+        Reactivate button: unarchive the employee, re-activate their
+        zk.enrolled.user (+ fingerprints + faces), reset per-device
+        enrollment tracking (the device actually deleted this data, so the
+        next sync must push it fresh rather than skip it as "already
+        there"), and queue a full resync (user info + fingerprints + faces
+        + photo) to every device. Logs the event to employee.departure.history.
+        """
+        self.action_unarchive()
+
+        Enrolled = self.env['zk.enrolled.user']
+        Device = self.env['zk.device']
+        History = self.env['employee.departure.history']
+        devices = Device.search([])
+
+        for emp in self:
+            if not emp.zk_badge_no:
+                continue
+            user = Enrolled.with_context(active_test=False).search([
+                ('pin', '=', emp.zk_badge_no),
+            ], limit=1)
+            if not user:
+                continue
+
+            user.write({'active': True})
+            user.fingerprint_ids.with_context(active_test=False).write({'active': True})
+            user.face_ids.with_context(active_test=False).write({'active': True})
+            user.action_clear_device_enrollment()
+            queued = user.enqueue_to_devices(
+                target_device_ids=devices.ids,
+                include_fp=True, include_face=True, include_photo=True,
+            )
+
+            History.create({
+                'employee_id': emp.id,
+                'enrolled_user_id': user.id,
+                'badge_no': emp.zk_badge_no,
+                'action': 'reactivated',
+                'commands_queued': queued,
+            })
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Reactivated'),
+                'message': _('Employee unarchived and resync queued to all devices.'),
                 'type': 'success',
                 'sticky': False,
             }

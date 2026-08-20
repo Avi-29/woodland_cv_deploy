@@ -30,6 +30,12 @@ class ZkUserSyncWizard(models.TransientModel):
     include_fingerprints = fields.Boolean('Include Fingerprints', default=True)
     include_faces        = fields.Boolean('Include Faces', default=True)
     include_cards        = fields.Boolean('Include Card / Password', default=True)
+    include_photo        = fields.Boolean(
+        'Include Profile Photo', default=False,
+        help='Push the employee\'s Odoo profile photo so every device shows the same picture.\n'
+             'Off by default: the exact device command for this has not been verified against '
+             'a real device yet. Turn on only after testing it on one device/employee first.',
+    )
 
     force_resync = fields.Boolean(
         string='Force Re-sync (ignore enrollment cache)',
@@ -57,13 +63,14 @@ class ZkUserSyncWizard(models.TransientModel):
             if not users:
                 raise UserError(_('Please select at least one user to sync.'))
         elif self.sync_mode == 'all_users':
-            users = EnrolledUser.search([])
+            users = EnrolledUser.search([('active', '=', True)])
         else:  # device_to_device
             if not self.source_device_id:
                 raise UserError(_('Please select a source device.'))
-            users = EnrolledUser.search(
-                [('enrolled_device_ids', 'in', self.source_device_id.id)]
-            )
+            users = EnrolledUser.search([
+                ('enrolled_device_ids', 'in', self.source_device_id.id),
+                ('active', '=', True),
+            ])
             if not users:
                 raise UserError(_('No enrolled users found on the source device.'))
 
@@ -79,6 +86,7 @@ class ZkUserSyncWizard(models.TransientModel):
             force=force,
             include_fp=self.include_fingerprints,
             include_face=self.include_faces,
+            include_photo=self.include_photo,
         )
 
         # Compute how many were skipped for the summary
@@ -88,6 +96,8 @@ class ZkUserSyncWizard(models.TransientModel):
                 max_possible += 1                          # USERINFO
                 max_possible += len(user.fingerprint_ids.filtered('valid'))
                 max_possible += len(user.face_ids.filtered('valid'))
+                if self.include_photo and user.employee_id.image_1920:
+                    max_possible += 1                       # Photo
         skipped = max_possible - queued
 
         lines = []

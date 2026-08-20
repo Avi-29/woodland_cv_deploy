@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 import re
 import pandas
-from datetime import date, timedelta
+import pytz
+from datetime import date, datetime, timedelta
 from odoo import api, fields, models
 from odoo.http import request
 from odoo.tools import date_utils
+
+DHAKA_TZ = pytz.timezone('Asia/Dhaka')
+# Fixed epoch from which raw "Absent" days start counting towards LWP totals.
+REALTIME_ABSENT_EPOCH = date(2026, 5, 1)
 
 LEAVE_COLORS = {
     1: "#F06050", 2: "#F4A460", 3: "#F7CD1F", 4: "#6CC1ED",
@@ -31,6 +36,10 @@ class HrEmployee(models.Model):
         if not result:
             result = [self.env.company.id]
         return result
+
+    def _dhaka_today(self):
+        """Current date in Asia/Dhaka, independent of server/user timezone."""
+        return datetime.now(pytz.utc).astimezone(DHAKA_TZ).date()
 
     def _build_dates(self, year, month):
         """Return list of YYYY-MM-DD strings for the given year+month."""
@@ -75,6 +84,31 @@ class HrEmployee(models.Model):
             {'id': 'daily', 'name': 'Daily'},
             {'id': 'regular', 'name': 'Regular'},
         ]
+
+    # ── live "present today" counter (header button) ──────────────────────────
+    @api.model
+    def get_present_today_count(self, department_id=None, worker_type=None):
+        """Count of employees checked in today (Asia/Dhaka), scoped to the
+        same department / worker-type filters as the dashboard toolbar.
+        """
+        domain = []
+        if department_id:
+            domain.append(('department_id', '=', department_id))
+        if worker_type:
+            domain.append(('worker_type', '=', worker_type))
+        employees = self.env['hr.employee'].search(domain)
+        if not employees:
+            return {'present_count': 0, 'total_count': 0}
+
+        today_str = self._dhaka_today().isoformat()
+        self.env.cr.execute("""
+            SELECT DISTINCT employee_id
+            FROM   hr_attendance
+            WHERE  employee_id IN %s
+              AND  (check_in AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka')::date::text = %s
+        """, (tuple(employees.ids), today_str))
+        present_ids = {r[0] for r in self.env.cr.fetchall()}
+        return {'present_count': len(present_ids), 'total_count': len(employees)}
 
     # ── quick create leave (from drag-select popup) ───────────────────────────
     @api.model
@@ -234,6 +268,9 @@ class HrEmployee(models.Model):
         absent_mark = (res_config.absent if res_config else None) or 'A'
 
         # ── build rows ────────────────────────────────────────────────────────
+        today_dhaka = self._dhaka_today()
+        today_str = today_dhaka.isoformat()
+
         employee_data = []
         for employee in employees:
             emp_leaves = leaves_by_emp.get(employee.id, [])
@@ -273,8 +310,10 @@ class HrEmployee(models.Model):
             leave_data = []
             total_absent_count = 0
             total_present_count = 0
+            genuine_present_count = 0  # actual worked days — used by the sandwich-absent gate below
             for d in dates:
                 weekday = date.fromisoformat(d).weekday()  # 0=Mon … 6=Sun
+                is_future = d > today_str  # day hasn't happened yet (Asia/Dhaka)
 
                 if d in leave_date_map:
                     code, color, leave_id, lt_name = leave_date_map[d]
@@ -314,10 +353,12 @@ class HrEmployee(models.Model):
                             'record_id': None,
                             'tooltip': public_holidays[d],
                         })
-                        total_present_count += 1
+                        if not is_future:
+                            total_present_count += 1
 
                 elif d in emp_swaps['off_dates']:
                     total_present_count += 1
+                    genuine_present_count += 1
                     co_work_date = emp_swaps['off_to_work'].get(d, '')
                     leave_data.append({
                         'leave_date': d,
@@ -333,7 +374,8 @@ class HrEmployee(models.Model):
                 elif (day_off_idx is not None
                       and weekday == day_off_idx
                       and d not in emp_swaps['work_dates']):
-                    total_present_count += 1
+                    if not is_future:
+                        total_present_count += 1
                     if d in emp_att:
                         # Present on weekly day-off → OFF/P
                         leave_data.append({
@@ -375,6 +417,7 @@ class HrEmployee(models.Model):
                             'tooltip': 'Late – click to view',
                         })
                         total_present_count += 1
+                        genuine_present_count += 1
                     else:
                         leave_data.append({
                             'leave_date': d,
@@ -385,6 +428,7 @@ class HrEmployee(models.Model):
                             'tooltip': 'Present – click to view',
                         })
                         total_present_count += 1
+                        genuine_present_count += 1
 
                 else:
                     leave_data.append({
@@ -395,7 +439,52 @@ class HrEmployee(models.Model):
                         'record_id': None,
                         'tooltip': 'Absent – click or drag to create leave',
                     })
-                    total_absent_count += 1
+                    if not is_future:
+                        total_absent_count += 1
+
+            # ── Sandwich Absent rule (mirrors enterprise_shift_payroll) ─────
+            # A weekly day-off with no attendance is also counted as absent
+            # when both its neighbouring days are genuine absences, or —
+            # if the employee barely showed up this month (fewer than 6
+            # actually-worked days) — every weekly day-off is treated as
+            # absent outright, same threshold/logic as payroll payslips.
+            if day_off_idx is not None:
+                MIN_PRESENT_FOR_DAY_OFF_PASS = 6
+                barely_present = genuine_present_count < MIN_PRESENT_FOR_DAY_OFF_PASS
+                by_date = {ld['leave_date']: ld for ld in leave_data}
+
+                def _is_effective_absent(dd):
+                    entry = by_date.get(dd)
+                    return bool(entry) and entry['record_type'] == 'absent'
+
+                for d in dates:
+                    if d > today_str:
+                        continue  # don't sandwich a day that hasn't happened yet
+                    if date.fromisoformat(d).weekday() != day_off_idx:
+                        continue
+                    entry = by_date[d]
+                    if entry['record_type'] != 'dayoff':
+                        continue  # only a plain, un-worked weekly off can be flipped
+
+                    if barely_present:
+                        sandwich = True
+                    else:
+                        prev_d = (date.fromisoformat(d) - timedelta(days=1)).isoformat()
+                        next_d = (date.fromisoformat(d) + timedelta(days=1)).isoformat()
+                        sandwich = (
+                            prev_d in by_date and next_d in by_date
+                            and _is_effective_absent(prev_d) and _is_effective_absent(next_d)
+                        )
+
+                    if sandwich:
+                        entry.update({
+                            'state': absent_mark,
+                            'color': '#fff3cd',
+                            'is_sandwich_absent': True,
+                            'tooltip': 'Sandwich Absent – weekly off between two absent days (payroll rule) – click to request swap',
+                        })
+                        total_present_count -= 1
+                        total_absent_count += 1
 
             employee_data.append({
                 'id': employee.id,
@@ -404,6 +493,7 @@ class HrEmployee(models.Model):
                 'department': employee.department_id.name if employee.department_id else '—',
                 'department_id': employee.department_id.id if employee.department_id else None,
                 'day_off': DAY_OFF_MAP.get(str(raw_dod) if raw_dod else '', ''),
+                'is_present_today': today_str in emp_att,
                 'leave_data': leave_data[::-1],
                 'total_absent_count': total_absent_count,
                 'total_present_count': total_present_count,
@@ -418,6 +508,109 @@ class HrEmployee(models.Model):
             'per_page': per_page,
             'total_pages': total_pages,
         }
+
+    # ── real "Absent" day counts (no leave filed, not a scheduled day off) ──
+    def _get_real_absent_counts(self, employees, date_from, date_to):
+        """Count genuine unexplained-absence days per employee within
+        [date_from, date_to] — no validated leave, no attendance, and not
+        a scheduled non-working day (weekly off / public holiday / swap
+        off). Mirrors the day-classification used in
+        get_employee_leave_data, but only tallies the final "Absent" case.
+        """
+        if not employees or date_from > date_to:
+            return {e.id: 0 for e in employees}
+
+        TZ = 'Asia/Dhaka'
+        emp_ids = tuple(employees.ids)
+        dates = pandas.date_range(date_from, date_to, freq='D').strftime("%Y-%m-%d").tolist()
+
+        self.env.cr.execute("""
+            SELECT hl.employee_id,
+                   hl.request_date_from::text AS date_from,
+                   hl.request_date_to::text   AS date_to
+            FROM   hr_leave hl
+            WHERE  hl.state = 'validate'
+              AND  hl.employee_id IN %s
+              AND  hl.request_date_from <= %s
+              AND  hl.request_date_to   >= %s
+        """, (emp_ids, date_to, date_from))
+        leave_days_by_emp = {}
+        for r in self.env.cr.dictfetchall():
+            days = pandas.date_range(
+                max(date.fromisoformat(r['date_from']), date_from),
+                min(date.fromisoformat(r['date_to']), date_to),
+                freq='d'
+            ).strftime("%Y-%m-%d").tolist()
+            leave_days_by_emp.setdefault(r['employee_id'], set()).update(days)
+
+        self.env.cr.execute("""
+            SELECT gs.day::date::text AS date
+            FROM resource_calendar_leaves rcl
+            CROSS JOIN LATERAL generate_series(
+                (rcl.date_from AT TIME ZONE 'UTC' AT TIME ZONE %s)::date,
+                (rcl.date_to   AT TIME ZONE 'UTC' AT TIME ZONE %s)::date,
+                interval '1 day'
+            ) AS gs(day)
+            WHERE rcl.resource_id IS NULL
+              AND gs.day::date BETWEEN %s AND %s
+        """, (TZ, TZ, date_from, date_to))
+        public_holidays = {r['date'] for r in self.env.cr.dictfetchall()}
+
+        self.env.cr.execute("""
+            SELECT employee_id,
+                   swap_work_date::text AS work_date,
+                   swap_off_date::text  AS off_date
+            FROM   hr_swap
+            WHERE  employee_id IN %s
+              AND  (swap_work_date BETWEEN %s AND %s
+                    OR swap_off_date BETWEEN %s AND %s)
+        """, (emp_ids, date_from, date_to, date_from, date_to))
+        swaps_by_emp = {}
+        for sw in self.env.cr.dictfetchall():
+            s = swaps_by_emp.setdefault(sw['employee_id'], {'work_dates': set(), 'off_dates': set()})
+            s['work_dates'].add(sw['work_date'])
+            s['off_dates'].add(sw['off_date'])
+
+        self.env.cr.execute("""
+            SELECT employee_id,
+                   (check_in AT TIME ZONE 'UTC' AT TIME ZONE %s)::date::text AS check_date
+            FROM   hr_attendance
+            WHERE  employee_id IN %s
+              AND  (check_in AT TIME ZONE 'UTC' AT TIME ZONE %s)::date BETWEEN %s AND %s
+        """, (TZ, emp_ids, TZ, date_from, date_to))
+        att_days_by_emp = {}
+        for a in self.env.cr.dictfetchall():
+            att_days_by_emp.setdefault(a['employee_id'], set()).add(a['check_date'])
+
+        result = {}
+        for employee in employees:
+            emp_leave_days = leave_days_by_emp.get(employee.id, set())
+            emp_att_days = att_days_by_emp.get(employee.id, set())
+            emp_swaps = swaps_by_emp.get(employee.id, {'work_dates': set(), 'off_dates': set()})
+            day_off_idx = None
+            raw_dod = getattr(employee, 'day_off_day', None)
+            if raw_dod:
+                try:
+                    day_off_idx = int(raw_dod)
+                except ValueError:
+                    pass
+
+            absent_count = 0
+            for d in dates:
+                if d in emp_leave_days or d in emp_att_days:
+                    continue
+                weekday = date.fromisoformat(d).weekday()
+                if (getattr(employee, 'worker_type', None) != 'daily'
+                        and d in public_holidays and d not in emp_swaps['work_dates']):
+                    continue
+                if d in emp_swaps['off_dates']:
+                    continue
+                if (day_off_idx is not None and weekday == day_off_idx
+                        and d not in emp_swaps['work_dates']):
+                    continue
+                absent_count += 1
+            result[employee.id] = absent_count
+        return result
 
     # ── yearly leave summary grid (12 months × SL/CL/LWP = 36 columns) ─────
     @api.model
@@ -493,17 +686,53 @@ class HrEmployee(models.Model):
             for d in pandas.date_range(d_from, d_to, freq='d'):
                 emp_months[d.month][key] += 1
 
+        # ── real-time Absent → LWP top-up (per month, Total follows) ────────
+        # From REALTIME_ABSENT_EPOCH (2026-05-01) to today (Asia/Dhaka), any
+        # unexplained absent day (no leave filed) is added into that same
+        # month's LWP count. Only relevant while viewing the current Dhaka
+        # year — the Total column is just the sum of the (now topped-up)
+        # months, so it stays consistent automatically.
+        today_dhaka = self._dhaka_today()
+        if y == today_dhaka.year:
+            range_start = max(REALTIME_ABSENT_EPOCH, year_start)
+            range_end = min(today_dhaka, year_end)
+            cursor = range_start
+            while cursor <= range_end:
+                if cursor.month == 12:
+                    month_last = date(cursor.year, 12, 31)
+                else:
+                    month_last = date(cursor.year, cursor.month + 1, 1) - timedelta(days=1)
+                month_end = min(month_last, range_end)
+
+                month_absent = self._get_real_absent_counts(employees, cursor, month_end)
+                for emp_id, cnt in month_absent.items():
+                    if not cnt:
+                        continue
+                    emp_months = monthly.setdefault(
+                        emp_id, {m: {'sl': 0, 'cl': 0, 'lwp': 0} for m in range(1, 13)}
+                    )
+                    emp_months[cursor.month]['lwp'] += cnt
+
+                cursor = (date(cursor.year + 1, 1, 1) if cursor.month == 12
+                          else date(cursor.year, cursor.month + 1, 1))
+
         employee_data = []
         for employee in employees:
             emp_months = monthly.get(
                 employee.id, {m: {'sl': 0, 'cl': 0, 'lwp': 0} for m in range(1, 13)}
             )
+            months_list = [emp_months[m] for m in range(1, 13)]
             employee_data.append({
                 'id': employee.id,
                 'name': employee.name,
                 'zk_badge_no': employee.zk_badge_no or '',
                 'department': employee.department_id.name if employee.department_id else '—',
-                'months': [emp_months[m] for m in range(1, 13)],
+                'months': months_list,
+                'total': {
+                    'sl': sum(m['sl'] for m in months_list),
+                    'cl': sum(m['cl'] for m in months_list),
+                    'lwp': sum(m['lwp'] for m in months_list),
+                },
             })
 
         return {

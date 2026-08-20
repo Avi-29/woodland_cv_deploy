@@ -56,6 +56,13 @@ COMMAND_CATALOGUE = {
         'params':   ['pin'],
         'help':     'Remove the face template for a user.',
     },
+    # ── Photo ────────────────────────────────────────────────────────────────
+    'enroll_userpic': {
+        'label':    'Push User Photo',
+        'template': 'DATA UPDATE USERPIC PIN={pin}\tFileName={pin}.jpg\tSize={size}\tContent={content}',
+        'params':   ['pin', 'size', 'content'],
+        'help':     'Push a base64 JPEG photo to the device for a given PIN — same picture on every device.',
+    },
     # ── Attendance ───────────────────────────────────────────────────────────
     'get_attlog': {
         'label':    'Get Attendance Log',
@@ -163,6 +170,7 @@ class ZkQuickCommandWizard(models.TransientModel):
         [(str(i), f'Finger {i}') for i in range(10)], string='Finger ID', default='0',
     )
     param_template   = fields.Text(string='Biometric Template (base64)')
+    param_photo_content = fields.Text(string='Photo (base64 JPEG)')
     param_start_time = fields.Datetime(string='Start Time')
     param_end_time   = fields.Datetime(string='End Time')
     param_duration   = fields.Integer(string='Duration (seconds)', default=5)
@@ -200,6 +208,8 @@ class ZkQuickCommandWizard(models.TransientModel):
         if 'name'       in params: subs['name']       = self.param_name or ''
         if 'finger_id'  in params: subs['finger_id']  = self.param_finger_id or '0'
         if 'template'   in params: subs['template']   = self.param_template or ''
+        if 'content'    in params: subs['content']    = self.param_photo_content or ''
+        if 'size'       in params: subs['size']       = str(len(self.param_photo_content or ''))
         if 'duration'   in params: subs['duration']   = str(self.param_duration or 5)
         if 'message'    in params: subs['message']    = self.param_message or ''
         if 'datetime'   in params:

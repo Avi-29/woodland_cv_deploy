@@ -172,6 +172,12 @@
             </div>
         </div>
         <div class="ahad_header_right">
+            <button class="ahad_btn ahad_present_counter"
+                    t-on-click="onClickPresentCounter"
+                    title="Employees checked in today (Asia/Dhaka), for the selected Department / Worker Type — click to refresh">
+                <span class="ahad_live_dot"/>
+                Present: <strong t-out="state.presentCount"/><span class="ahad_present_total"> / <t t-out="state.presentTotal"/></span>
+            </button>
             <button class="ahad_btn ahad_btn_outline" t-on-click="onToggleLeaveSummary">
                 <t t-if="state.viewMode === 'attendance'">
                     <i class="fa fa-list-alt"/> Leave Summary
@@ -256,6 +262,7 @@
         <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#F06050;"/> Leave</span>
         <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#78909c;"/> OFF/P (Present on day-off)</span>
         <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#80cbc4;"/> PH/P (Present on holiday)</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch ahad_sandwich_absent" style="background:#fff3cd;"/> Sandwich Absent (day-off between two absences)</span>
         <span class="ahad_legend_tip">💡 Click absent → Create leave | Click OFF/PH → Swap | Click OFF/P or PH/P → Attendance | Right-click OFF/P or PH/P → Create Swap/OT</span>
     </div>
     <div class="ahad_legend" t-if="state.viewMode === 'leaveSummary'">
@@ -312,8 +319,8 @@
                             <td class="ahad_td_sticky ahad_td_emp ahad_clickable"
                                 t-on-click="() => this.onClickEmployee(employee.id)"
                                 title="Open employee record">
-                                <span class="ahad_avatar" t-out="employee.name[0]"/>
-                                <span class="ahad_emp_name" t-out="employee.name"/>
+                                <span t-attf-class="ahad_avatar {{ employee.is_present_today ? 'ahad_avatar_present' : '' }}" t-out="employee.name[0]"/>
+                                <span t-attf-class="ahad_emp_name {{ employee.is_present_today ? 'ahad_emp_name_present' : '' }}" t-out="employee.name"/>
                             </td>
                             <!-- Badge -->
                             <td class="ahad_td_sticky ahad_td_badge" t-out="employee.zk_badge_no or '—'"/>
@@ -333,7 +340,7 @@
                             </td>
                             <!-- Date cells -->
                             <t t-foreach="employee.leave_data" t-as="leave" t-key="leave_index">
-                                <td t-attf-class="ahad_td_cell {{ leave.is_day_off_or_holiday and (leave.state == 'OFF/P' and 'ahad_split_off_p' or 'ahad_split_ph_p') or cellCursor(leave) }}"
+                                <td t-attf-class="ahad_td_cell {{ leave.is_day_off_or_holiday and (leave.state == 'OFF/P' and 'ahad_split_off_p' or 'ahad_split_ph_p') or cellCursor(leave) }} {{ leave.is_sandwich_absent and 'ahad_sandwich_absent' or '' }}"
                                     t-attf-style="{{ leave.is_day_off_or_holiday and '' or ('background:' + leave.color + ';') }}"
                                     t-att-title="leave.tooltip or ''"
                                     t-att-data-date="leave.leave_date"
@@ -371,21 +378,6 @@
                             </td>
                         </tr>
                     </tbody>
-                    <tfoot t-if="state.employeeData.length">
-                        <tr class="ahad_tfoot">
-                            <td class="ahad_td_sticky ahad_td_emp ahad_foot_label" colspan="4">Leave Summary</td>
-                            <td class="ahad_td_summary ahad_td_sticky ahad_td_pres ahad_foot_label"/>
-                            <td class="ahad_td_summary ahad_td_sticky ahad_td_abs ahad_foot_label"/>
-                            <td t-att-colspan="state.filteredDurationDates.length"/>
-                            <td class="ahad_td_summary ahad_td_breakdown">
-                                <t t-foreach="footerLeaveCounts" t-as="fc" t-key="fc.code">
-                                    <span class="ahad_lc_chip ahad_lc_chip_footer">
-                                        <t t-out="fc.code"/>:<strong t-out="fc.cnt"/>
-                                    </span>
-                                </t>
-                            </td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>
@@ -407,22 +399,26 @@
                             <th class="ahad_th_sticky ahad_th_emp" rowspan="2">Employee</th>
                             <th class="ahad_th_sticky ahad_th_badge" rowspan="2">Badge</th>
                             <th class="ahad_th_sticky ahad_th_dept" rowspan="2">Department</th>
+                            <th class="ahad_th_date" colspan="3" style="background:#eef2ff;color:#3730a3;">Total</th>
                             <t t-foreach="leaveSummaryMonthLabels" t-as="mLabel" t-key="mLabel_index">
                                 <th class="ahad_th_date" colspan="3" t-out="mLabel"/>
                             </t>
                         </tr>
                         <tr>
+                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#6CC1ED40;color:#0b5f8a;font-weight:700;">SL</th>
+                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#30C38140;color:#1b6b45;font-weight:700;">CL</th>
+                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#F0605040;color:#96261b;font-weight:700;">LWP</th>
                             <t t-foreach="leaveSummaryMonthLabels" t-as="mLabel2" t-key="mLabel2_index">
-                                <th style="min-width:36px;font-size:10px;padding:3px 2px;background:#6CC1ED22;color:#0b5f8a;">SL</th>
-                                <th style="min-width:36px;font-size:10px;padding:3px 2px;background:#30C38122;color:#1b6b45;">CL</th>
-                                <th style="min-width:38px;font-size:10px;padding:3px 2px;background:#F0605022;color:#96261b;">LWP</th>
+                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#6CC1ED40;color:#0b5f8a;font-weight:700;">SL</th>
+                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#30C38140;color:#1b6b45;font-weight:700;">CL</th>
+                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#F0605040;color:#96261b;font-weight:700;">LWP</th>
                             </t>
                         </tr>
                     </thead>
                     <tbody>
                         <t t-if="!state.leaveSummaryData.length">
                             <tr>
-                                <td colspan="39" class="ahad_no_data">No employees found.</td>
+                                <td colspan="42" class="ahad_no_data">No employees found.</td>
                             </tr>
                         </t>
                         <tr t-foreach="state.leaveSummaryData" t-as="employee" t-key="employee.id">
@@ -434,6 +430,9 @@
                             </td>
                             <td class="ahad_td_sticky ahad_td_badge" t-out="employee.zk_badge_no or '—'"/>
                             <td class="ahad_td_sticky ahad_td_dept" t-out="employee.department"/>
+                            <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:700;background:#6CC1ED40;color:#0b5f8a;" t-out="employee.total.sl"/>
+                            <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:700;background:#30C38140;color:#1b6b45;" t-out="employee.total.cl"/>
+                            <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:700;background:#F0605040;color:#96261b;" t-out="employee.total.lwp"/>
                             <t t-foreach="employee.months" t-as="mData" t-key="mData_index">
                                 <td style="text-align:center;padding:4px 2px;font-size:12px;" t-attf-style="text-align:center;padding:4px 2px;font-size:12px;{{ leaveSummaryCellStyle('sl', mData.sl) }}" t-out="mData.sl"/>
                                 <td style="text-align:center;padding:4px 2px;font-size:12px;" t-attf-style="text-align:center;padding:4px 2px;font-size:12px;{{ leaveSummaryCellStyle('cl', mData.cl) }}" t-out="mData.cl"/>
@@ -441,16 +440,6 @@
                             </t>
                         </tr>
                     </tbody>
-                    <tfoot t-if="state.leaveSummaryData.length">
-                        <tr class="ahad_tfoot">
-                            <td class="ahad_td_sticky ahad_td_emp ahad_foot_label" colspan="3">Totals</td>
-                            <t t-foreach="leaveSummaryFooterTotals" t-as="fTotal" t-key="fTotal_index">
-                                <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:bold;" t-out="fTotal.sl"/>
-                                <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:bold;" t-out="fTotal.cl"/>
-                                <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:bold;" t-out="fTotal.lwp"/>
-                            </t>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>

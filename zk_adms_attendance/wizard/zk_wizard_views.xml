@@ -24,6 +24,7 @@
                         <field name="include_fingerprints"/>
                         <field name="include_faces"/>
                         <field name="include_cards"/>
+                        <field name="include_photo"/>
                     </group>
                     <group string="Options">
                         <field name="force_resync"/>
@@ -88,13 +89,15 @@
                     <group string="Parameters"
                            invisible="command_type in ['get_all_userinfo','get_all_fp','get_attlog','clear_attlog','reboot','enable_device','disable_device','clear_admin','reset_device']">
                         <field name="param_pin"
-                               invisible="command_type not in ['enroll_user','delete_user','enroll_fp','delete_fp','get_new_attlog','enroll_face','delete_face']"/>
+                               invisible="command_type not in ['enroll_user','delete_user','enroll_fp','delete_fp','get_new_attlog','enroll_face','delete_face','enroll_userpic']"/>
                         <field name="param_name"
                                invisible="command_type != 'enroll_user'"/>
                         <field name="param_finger_id"
                                invisible="command_type not in ['enroll_fp','delete_fp']"/>
                         <field name="param_template"
                                invisible="command_type not in ['enroll_fp','enroll_face']"/>
+                        <field name="param_photo_content"
+                               invisible="command_type != 'enroll_userpic'"/>
                         <field name="param_start_time"
                                invisible="command_type != 'get_new_attlog'"/>
                         <field name="param_end_time"

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_zk_operlog_raw_list" model="ir.ui.view">
+        <field name="name">zk.operlog.raw.list</field>
+        <field name="model">zk.operlog.raw</field>
+        <field name="arch" type="xml">
+            <list string="OPERLOG Batch Queue"
+                  decoration-danger="state == 'error'"
+                  decoration-success="state == 'processed'"
+                  decoration-warning="state == 'new'">
+                <field name="create_date"/>
+                <field name="record_type"/>
+                <field name="device_id"/>
+                <field name="device_serial"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'processed'"
+                       decoration-warning="state == 'new'"
+                       decoration-danger="state == 'error'"/>
+                <field name="error_msg"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_zk_operlog_raw_form" model="ir.ui.view">
+        <field name="name">zk.operlog.raw.form</field>
+        <field name="model">zk.operlog.raw</field>
+        <field name="arch" type="xml">
+            <form string="OPERLOG Raw Row">
+                <header>
+                    <button name="action_reprocess" type="object"
+                            string="Reprocess" class="btn-primary"
+                            invisible="state != 'error'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="record_type"/>
+                        <field name="device_id"/>
+                        <field name="device_serial"/>
+                    </group>
+                    <group string="Raw">
+                        <field name="raw_kv"/>
+                        <field name="error_msg"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_zk_operlog_raw_search" model="ir.ui.view">
+        <field name="name">zk.operlog.raw.search</field>
+        <field name="model">zk.operlog.raw</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="device_id"/>
+                <field name="record_type"/>
+                <filter string="Error" name="filter_error" domain="[('state', '=', 'error')]"/>
+                <filter string="New" name="filter_new" domain="[('state', '=', 'new')]"/>
+                
+                    <filter string="Record Type" name="group_type" context="{'group_by': 'record_type'}"/>
+                    <filter string="Device" name="group_device" context="{'group_by': 'device_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+         
+            </search>
+        </field>
+    </record>
+
+    <record id="action_zk_operlog_raw" model="ir.actions.act_window">
+        <field name="name">OPERLOG Batch Queue</field>
+        <field name="res_model">zk.operlog.raw</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_filter_error': 1}</field>
+    </record>
+</odoo>

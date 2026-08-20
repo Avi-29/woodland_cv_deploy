@@ -91,7 +91,6 @@ class AdmsController(http.Controller):
     # ------------------------------------------------------------------
     @http.route('/iclock/cdata', type='http', auth='public', methods=['POST'], csrf=False)
     def adms_post_data(self, **kw):
-        print(kw)
         sn    = kw.get('SN', '').strip()
         table = kw.get('table', '').strip().upper()
         if not sn:
@@ -114,7 +113,7 @@ class AdmsController(http.Controller):
             return self._handle_biodata(device, body)
         if table in ('ENROLL_FP', 'ENROLL_USER', 'CHGUSER', 'CHGFP'):
             # Enrollment-complete notifications — no body to parse, just ACK
-            _logger.info('ZK ADMS %s notification from %s', table, sn)
+            _logger.debug('ZK ADMS %s notification from %s', table, sn)
             return plain(OK)
 
         _logger.debug('ZK ADMS: unhandled table=%s from SN=%s', table, sn)
@@ -147,7 +146,7 @@ class AdmsController(http.Controller):
                 '_raw':     line,
             })
         count = request.env['zk.attendance.log'].sudo().create_from_adms(device, records)
-        _logger.info('ZK ATTLOG: %d new punches from %s', count, device.serial_number)
+        _logger.debug('ZK ATTLOG: %d new punches from %s', count, device.serial_number)
         return plain(f'OK: {len(records)}')
 
     # ── OPERLOG ─────────────────────────────────────────────────────────────
@@ -173,9 +172,16 @@ class AdmsController(http.Controller):
           DEL_USER  PIN=n
           DEL_FP    PIN=n\tFINGERID=n
         """
+        RawModel = request.env['zk.operlog.raw'].sudo()
         UserModel = request.env['zk.enrolled.user'].sudo()
         FpModel   = request.env['zk.enrolled.fp'].sudo()
-        FaceModel = request.env['zk.enrolled.face'].sudo()
+
+        # USER/FP/FACE lines are the bulk-volume ones (thousands on a
+        # get_all_userinfo pull) — queue them for the batch cron instead of
+        # upserting one at a time inside this request. Everything else
+        # (device events, photo, delete notifications) is low-volume and
+        # stays handled inline below.
+        bulk_vals = []
 
         for line in body.splitlines():
             line = line.strip()
@@ -192,53 +198,49 @@ class AdmsController(http.Controller):
                 _logger.debug('ZK OPLOG from %s: %s', device.serial_number, line[:120])
                 continue
 
+            if record_type in ('USER', 'FP', 'FACE', 'UFACE'):
+                bulk_vals.append({
+                    'device_id': device.id,
+                    'device_serial': device.serial_number,
+                    'record_type': 'FACE' if record_type == 'UFACE' else record_type,
+                    'raw_kv': rest,
+                })
+                continue
+
             kv = _parse_kv_line(rest)
 
-            if record_type == 'USER':
-                UserModel.upsert_from_operlog(device, kv)
-
-            elif record_type == 'FP':
-                pin  = str(kv.get('PIN', '')).strip()
-                user = UserModel.search([('pin', '=', pin)], limit=1)
-                if not user:
-                    user = UserModel.create({
-                        'pin': pin, 'name': f'User {pin}',
-                        'source_device_id': device.id,
-                        'last_updated': fields.Datetime.now(),
-                    })
-                FpModel.upsert_from_operlog(device, user, kv)
-
-            elif record_type in ('FACE', 'UFACE'):
-                pin  = str(kv.get('PIN', '')).strip()
-                user = UserModel.search([('pin', '=', pin)], limit=1)
-                if not user:
-                    user = UserModel.create({
-                        'pin': pin, 'name': f'User {pin}',
-                        'source_device_id': device.id,
-                        'last_updated': fields.Datetime.now(),
-                    })
-                FaceModel.upsert_from_operlog(device, user, kv)
-
-            elif record_type == 'USERPIC':
+            if record_type == 'USERPIC':
                 # Store photo on the linked hr.employee
                 self._handle_userpic(device, kv)
 
             elif record_type == 'DEL_USER':
                 pin = str(kv.get('PIN', '')).strip()
-                _logger.info('ZK OPERLOG DEL_USER PIN=%s from %s (kept in Odoo)', pin, device.serial_number)
+                _logger.debug('ZK OPERLOG DEL_USER PIN=%s from %s (kept in Odoo)', pin, device.serial_number)
 
             elif record_type == 'DEL_FP':
                 pin    = str(kv.get('PIN', '')).strip()
                 finger = str(kv.get('FINGERID', '0')).strip()
-                user   = UserModel.search([('pin', '=', pin)], limit=1)
-                if user:
-                    fp = FpModel.search([('user_id', '=', user.id), ('finger_id', '=', finger)], limit=1)
-                    if fp:
-                        fp.write({'valid': False})
-                _logger.info('ZK OPERLOG DEL_FP PIN=%s F%s marked invalid', pin, finger)
+                try:
+                    with request.env.cr.savepoint():
+                        user = UserModel.search([('pin', '=', pin)], limit=1)
+                        if user:
+                            fp = FpModel.search([('user_id', '=', user.id), ('finger_id', '=', finger)], limit=1)
+                            if fp:
+                                fp.write({'valid': False})
+                    _logger.debug('ZK OPERLOG DEL_FP PIN=%s F%s marked invalid', pin, finger)
+                except Exception as e:
+                    # Unguarded, a failure here would abort the whole request
+                    # and lose every bulk_vals row queued from earlier lines
+                    # in this same push (they're only create()'d at the end).
+                    _logger.warning('ZK OPERLOG DEL_FP error PIN=%s F%s: %s', pin, finger, e)
 
             else:
                 _logger.debug('ZK OPERLOG unknown type=%s from %s', record_type, device.serial_number)
+
+        if bulk_vals:
+            RawModel.create(bulk_vals)
+            _logger.info('ZK OPERLOG: queued %d USER/FP/FACE row(s) from %s for batch processing',
+                         len(bulk_vals), device.serial_number)
 
         return plain(OK)
 
@@ -249,12 +251,21 @@ class AdmsController(http.Controller):
         if not pin or not content:
             return
         try:
-            employee = request.env['hr.employee'].sudo().get_by_badge(pin)
-            if employee:
-                employee.write({'image_1920': content})
-                _logger.info('ZK USERPIC: stored photo for employee %s (PIN=%s)', employee.name, pin)
-            else:
-                _logger.debug('ZK USERPIC: no employee found for PIN=%s', pin)
+            with request.env.cr.savepoint():
+                employee = request.env['hr.employee'].sudo().get_by_badge(pin)
+                if employee:
+                    # This write clears photo_synced_device_ids on every device
+                    # (see hr_employee.py's write() override) since the photo is
+                    # changing — then immediately mark the source device as
+                    # already having it, so the next sync only pushes it out to
+                    # every *other* device instead of redundantly back to this one.
+                    employee.write({'image_1920': content})
+                    user = request.env['zk.enrolled.user'].sudo().search([('pin', '=', pin)], limit=1)
+                    if user:
+                        user.photo_synced_device_ids = [(4, device.id)]
+                    _logger.debug('ZK USERPIC: stored photo for employee %s (PIN=%s)', employee.name, pin)
+                else:
+                    _logger.debug('ZK USERPIC: no employee found for PIN=%s', pin)
         except Exception as e:
             _logger.warning('ZK USERPIC: failed to save photo PIN=%s: %s', pin, e)
 
@@ -284,9 +295,18 @@ class AdmsController(http.Controller):
                 continue
             kv = _parse_kv_line(rest)
             try:
-                UserModel.upsert_from_biodata(device, kv)
+                with request.env.cr.savepoint():
+                    UserModel.upsert_from_biodata(device, kv)
                 count += 1
             except Exception as e:
+                # Without the savepoint, a DB-level failure here (bad insert,
+                # constraint violation, etc.) leaves the whole transaction
+                # "aborted" at the Postgres level - every later query on this
+                # same request/cursor (even an unrelated SELECT for the next
+                # line) then fails with "current transaction is aborted,
+                # commands ignored until end of transaction block" until a
+                # rollback happens. cr.savepoint() rolls back only this one
+                # line's work on failure, so the rest of the batch still runs.
                 _logger.warning('ZK BIODATA parse error: %s | line: %s', e, line[:120])
 
         _logger.info('ZK BIODATA: processed %d record(s) from %s', count, device.serial_number)
@@ -310,7 +330,7 @@ class AdmsController(http.Controller):
             cmd = request.env['zk.device.command'].sudo().next_for_device(device)
             if cmd:
                 response_body = f'C:{cmd.cmd_id}:{cmd.command_string}'
-                _logger.info('ZK CMD dispatch to %s: %s', sn, response_body[:120])
+                _logger.debug('ZK CMD dispatch to %s: %s', sn, response_body[:120])
                 return plain(response_body)
         except Exception as e:
             _logger.warning('ZK getrequest error sn=%s: %s', sn, e)

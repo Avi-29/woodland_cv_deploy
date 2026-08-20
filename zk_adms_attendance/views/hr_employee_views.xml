@@ -20,12 +20,15 @@
 
             </xpath>
             <xpath expr="//header" position="inside">
-                <field name="active_employee" invisible="1"/>
-                <button name="action_archive_and_remove_from_devices"
-                        type="object" invisible="active=='False'"
+                <button name="action_archive"
+                        type="object" invisible="not active"
                         string="Delete Employee"
-                        class="btn-danger"
-                        confirm="This will archive the employee and remove from all devices. Continue?"/>
+                        class="btn-danger"/>
+                <button name="action_unarchive_and_resync_devices"
+                        type="object" invisible="active"
+                        string="Reactivate Employee"
+                        class="btn-primary"
+                        confirm="This will unarchive the employee and resync face/fingerprint/user data to all devices. Continue?"/>
             </xpath>
             <!-- ZKTeco tab inside the notebook -->
             <xpath expr="//notebook" position="inside">
@@ -61,6 +64,21 @@
                         the device to this employee.
                     </div>
                 </page>
+                <page string="Departure History" name="zk_departure_history">
+                    <field name="zk_departure_history_ids" nolabel="1" readonly="1">
+                        <list create="false" delete="false">
+                            <field name="event_date"/>
+                            <field name="action" widget="badge"
+                                   decoration-danger="action == 'departed'"
+                                   decoration-success="action == 'reactivated'"/>
+                            <field name="badge_no"/>
+                            <field name="departure_reason_id"/>
+                            <field name="commands_queued" string="Commands Queued"/>
+                            <field name="performed_by"/>
+                            <field name="note" optional="hide"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
 
         </field>
@@ -70,6 +88,11 @@
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
         <field name="arch" type="xml">
+            <!-- zk_badge_no is Char, so sorting by it is alphabetical
+                 (1, 10, 11, 2, ...). Order by the numeric mirror instead. -->
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="default_order">zk_badge_no_int asc</attribute>
+            </xpath>
             <xpath expr="//main/div" position="after">
                 <div>
                     ID NO.-
