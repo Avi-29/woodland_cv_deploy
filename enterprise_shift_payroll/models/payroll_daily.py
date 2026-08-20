@@ -417,10 +417,11 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         return counts
 
     def _week_range(self):
-        d      = self.week_date
-        monday = d - timedelta(days=d.weekday())
-        sunday = monday + timedelta(days=6)
-        return monday, sunday
+        d        = self.week_date
+        offset   = (d.weekday() - 3) % 7  # weekday(): Mon=0 ... Thu=3 ... Sun=6
+        thursday = d - timedelta(days=offset)
+        wednesday = thursday + timedelta(days=6)
+        return thursday, wednesday
 
     def action_generate_weekly(self):
         """
@@ -434,10 +435,10 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         """
         if self.include_bonus and not self.bonus_month:
             raise UserError('Please select a Bonus Month.')
-        monday, sunday = self._week_range()
+        thursday, wednesday = self._week_range()
         payroll_model  = self.env['daily.payroll']
-        current = monday
-        while current <= sunday:
+        current = thursday
+        while current <= wednesday:
             payroll_model.generate_daily_payroll(current)
             current += timedelta(days=1)
         # Produce and return the Excel report immediately after recompute
@@ -449,8 +450,8 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         if self.include_bonus and not self.bonus_month:
             raise UserError('Please select a Bonus Month.')
 
-        monday, sunday = self._week_range()
-        domain = [('work_date', '>=', monday), ('work_date', '<=', sunday)]
+        thursday, wednesday = self._week_range()
+        domain = [('work_date', '>=', thursday), ('work_date', '<=', wednesday)]
         if self.department_id:
             domain.append(('department_id', '=', self.department_id.id))
         if self.shift_id:
@@ -461,7 +462,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         # Bonus attendance counts (only when requested)
         bonus_counts = self._bonus_att_counts() if self.include_bonus else {}
 
-        week_days = [monday + timedelta(days=i) for i in range(7)]
+        week_days = [thursday + timedelta(days=i) for i in range(7)]
         emp_data  = {}
         for r in records:
             eid = r.employee_id.id
@@ -524,7 +525,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                                      'bg_color': '#C6EFCE', 'border': 1,
                                      'num_format': '#,##0.00', 'valign': 'vcenter'})
 
-        DAY_NAMES  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        DAY_NAMES  = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed']
         fixed_cols = ['SL', 'ID No', 'Employee', 'Department', 'Shift', 'Daily\nWage']
 
         # Summary columns — bonus columns inserted before Remarks when active
@@ -547,14 +548,14 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         bonus_extra_widths = [12, 12, 14] if self.include_bonus else []
         col_widths = [6, 12, 26, 28, 20, 12] + [16] * 7 + [11, 11, 11, 14, 14, 14, 14] + bonus_extra_widths + [20]
 
-        sheet_label = f"Week {monday.strftime('%d%b')}-{sunday.strftime('%d%b%Y')}"[:31]
+        sheet_label = f"Week {thursday.strftime('%d%b')}-{wednesday.strftime('%d%b%Y')}"[:31]
         ws = wb.add_worksheet(sheet_label)
         for i, w in enumerate(col_widths):
             ws.set_column(i, i, w)
 
         title_str = (
             f"Weekly Payroll Report  |  "
-            f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
+            f"{thursday.strftime('%d %b')} – {wednesday.strftime('%d %b %Y')}"
             + (f"  |  Bonus: {self.bonus_month.strftime('%B %Y')}  (>{self.BONUS_THRESHOLD} days → ৳{self.BONUS_AMOUNT:,.0f})" if self.include_bonus else "")
         )
         ws.merge_range(0, 0, 1, total_cols - 1, title_str, title_fmt)
@@ -777,7 +778,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
 
         sm_title = (
             f"Weekly Department Summary  |  "
-            f"{monday.strftime('%d %b')} – {sunday.strftime('%d %b %Y')}"
+            f"{thursday.strftime('%d %b')} – {wednesday.strftime('%d %b %Y')}"
         )
         sm.merge_range(0, 0, 1, len(SM_COLS) - 1, sm_title, sm_title_fmt)
         sm.set_row(0, 30)
@@ -839,7 +840,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         output.seek(0)
 
         fname = (
-            f"weekly_payroll_{monday}_{sunday}"
+            f"weekly_payroll_{thursday}_{wednesday}"
             f"{'_' + self.department_id.name.replace(' ', '_') if self.department_id else ''}"
             f"{'_' + self.shift_id.name.replace(' ', '_') if self.shift_id else ''}"
             f"{'_bonus_' + self.bonus_month.strftime('%Y%m') if self.include_bonus else ''}"

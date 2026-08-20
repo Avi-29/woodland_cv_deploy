@@ -35,7 +35,7 @@ class HrEmployee(models.Model):
         ('4', 'Friday'),
         ('5', 'Saturday'),
         ('6', 'Sunday'),
-    ], string="Weekly Day Off",
+    ], string="Weekly Day Off", default='4',
         help="Recurring weekly day off (e.g. Friday). "
              "Working days = calendar days − occurrences of this weekday in the period.")
 
