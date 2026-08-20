@@ -1,0 +1,49 @@
+<templates xml:space="preserve">
+    <t t-inherit="ica_web_responsive.HomeMenu" t-inherit-mode="extension" owl="1">
+        <!-- Insert INSIDE the scrollable .container, as its first child,
+             instead of "before" the h-100 root. Being a sibling of a
+             100%-height scroll container pushed the grid's bottom rows
+             out of the scrollable area; this way it scrolls as part of
+             the same content, and it's kept visible via sticky. -->
+        <xpath expr="//div[hasclass('o_home_menu')]/div[hasclass('container')]/input" position="before">
+            <div class="o_home_menu_logo">
+                <img t-att-src="logoUrl" alt="H&amp;S Glassware LTD."/>
+            </div>
+        </xpath>
+        <!-- Fixed bottom logo stays fixed to the viewport, so it's fine as
+             a plain sibling and does not affect layout/scroll at all. -->
+        <xpath expr="//div[hasclass('o_home_menu')]" position="before">
+            <div class="fixed_bottom_logo">
+                <img src="/woodland_odoo_debranding/static/src/img/group_logo.png"/>
+            </div>
+        </xpath>
+    </t>
+    <t
+            t-name="web_save_discard_button.FormStatusIndicator"
+            t-inherit="web.FormStatusIndicator"
+            t-inherit-mode="extension"
+            owl="1"
+    >
+        <xpath expr="//button[(hasclass('o_form_button_save'))]" position="replace">
+            <button type="button"
+                    class="btn btn-outline-success px-2 py-2 lh-sm o_form_button_save ms-2"
+                    data-hotkey="s"
+                    t-on-click.stop="save"
+                    data-tooltip="Save manually"
+                    aria-label="Save manually"
+                    t-ref="save">
+                Save
+            </button>
+        </xpath>
+        <xpath expr="//button[(hasclass('o_form_button_cancel'))]" position="replace">
+            <button type="button"
+                    class="btn btn-outline-danger px-2 py-2 lh-sm o_form_button_cancel ms-2"
+                    data-hotkey="j"
+                    t-on-click.stop="discard"
+                    data-tooltip="Discard changes"
+                    aria-label="Discard changes">
+                Cancel
+            </button>
+        </xpath>
+    </t>
+</templates>

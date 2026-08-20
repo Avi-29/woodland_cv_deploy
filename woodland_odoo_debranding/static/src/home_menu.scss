@@ -1,0 +1,36 @@
+// Group logo pinned to the viewport corner. It's position:fixed so it
+// never takes up layout space and is unaffected by any inner scrolling.
+.fixed_bottom_logo {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100000;
+    pointer-events: none;
+
+    img {
+        width: 100px;
+        opacity: 0.9;
+    }
+}
+
+// Top company logo. Lives INSIDE the scrollable .o_home_menu container
+// (see home_menu.xml) so it scrolls away naturally with the app grid,
+// instead of adding extra height on top of the h-100 grid like before.
+.o_home_menu_logo {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    img {
+        max-height: 150px;
+        width: auto;
+    }
+}
+
+// Keep the app grid from ever being hidden behind the fixed bottom logo,
+// especially on mobile where .o_apps scrolls internally.
+.o_home_menu .o_apps {
+    padding-bottom: 120px;
+}
