@@ -209,34 +209,27 @@ class DailyPayrollExcelWizard(models.TransientModel):
         hdr_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 11,
                                      'bg_color': '#1F3864', 'font_color': '#FFFFFF',
                                      'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
-        cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'})
+        cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+                                     'align': 'center', 'valign': 'vcenter'})
         num_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
-        rate_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': '#,##0.0000', 'valign': 'vcenter'})
-        ot_fmt     = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#E2EFDA', 'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+        present_fmt= wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+                                     'bg_color': '#C6EFCE', 'align': 'center', 'valign': 'vcenter'})
         absent_fmt = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'bg_color': '#FCE4D6', 'align': 'center', 'valign': 'vcenter'})
         dayoff_fmt = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'bg_color': '#E2E2E2', 'align': 'center', 'valign': 'vcenter',
                                      'italic': True})
         tot_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
-                                     'bg_color': '#FFF2CC', 'border': 1, 'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'bg_color': '#FFF2CC', 'border': 1, 'num_format': '#,##0.00',
+                                     'align': 'center', 'valign': 'vcenter'})
         tot_lbl    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
-                                     'bg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter'})
+                                     'bg_color': '#FFF2CC', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
         title_fmt  = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 14,
                                      'font_color': '#1F3864', 'align': 'center', 'valign': 'vcenter'})
-        date_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': 'dd/mm/yyyy', 'valign': 'vcenter'})
 
-        COLS   = [
-            'SL', 'ID No', 'Employee', 'Date', 'Department', 'Shift', 'Status',
-            'Hours\nWorked', 'Daily\nWage', 'Hourly Rate\n(Wage÷8)',
-            'OT Hours\n(Validated)', 'OT\nAmount',
-            'Base Pay', 'Total Amount', 'Remarks',
-        ]
-        WIDTHS = [6, 12, 24, 12, 28, 20, 12, 10, 12, 14, 14, 12, 12, 14, 20]
+        COLS   = ['SL', 'ID No', 'Employee Name', 'Status', 'Base Pay', 'Total Amount', 'Remarks']
+        WIDTHS = [6, 12, 26, 12, 14, 14, 20]
 
         title_parts = [self.report_date.strftime('%d %B %Y')]
         if self.department_id:
@@ -256,7 +249,7 @@ class DailyPayrollExcelWizard(models.TransientModel):
             ws.set_column(i, i, w)
 
         row = 2
-        grand_base = grand_ot = grand_total = 0.0
+        grand_base = grand_total = 0.0
 
         for c, h in enumerate(COLS):
             ws.write(row, c, h, hdr_fmt)
@@ -273,39 +266,29 @@ class DailyPayrollExcelWizard(models.TransientModel):
                 s_fmt      = dayoff_fmt
             elif r.present:
                 status_str = 'Present'
-                s_fmt      = cell_fmt
+                s_fmt      = present_fmt
             else:
                 status_str = 'Absent'
                 s_fmt      = absent_fmt
 
-            ws.write(row, 0,  sl_no,                       cell_fmt)
-            ws.write(row, 1,  badge_no,                    cell_fmt)
-            ws.write(row, 2,  r.employee_id.name or '',    cell_fmt)
-            ws.write_datetime(row, 3, r.work_date,         date_fmt)
-            ws.write(row, 4,  r.department_id.name or '',  cell_fmt)
-            ws.write(row, 5,  r.shift_id.name if r.shift_id else '', cell_fmt)
-            ws.write(row, 6,  status_str,                  s_fmt)
-            ws.write(row, 7,  r.hours_worked,              num_fmt)
-            ws.write(row, 8,  r.wage,                      num_fmt)
-            ws.write(row, 9,  r.hourly_rate,               rate_fmt)
-            ws.write(row, 10, r.ot_hours,                  num_fmt if r.ot_hours == 0 else ot_fmt)
-            ws.write(row, 11, r.ot_amount,                 num_fmt if r.ot_amount == 0 else ot_fmt)
-            ws.write(row, 12, r.amount,                    num_fmt)
-            ws.write(row, 13, r.total_amount,              num_fmt)
-            ws.write(row, 14, '',                          cell_fmt)
+            ws.write(row, 0, sl_no,                    cell_fmt)
+            ws.write(row, 1, badge_no,                 cell_fmt)
+            ws.write(row, 2, r.employee_id.name or '', cell_fmt)
+            ws.write(row, 3, status_str,                s_fmt)
+            ws.write(row, 4, r.amount,                  num_fmt)
+            ws.write(row, 5, r.total_amount,            num_fmt)
+            ws.write(row, 6, '',                        cell_fmt)
 
             grand_base  += r.amount
-            grand_ot    += r.ot_amount
             grand_total += r.total_amount
             sl_no += 1
             row += 1
 
         ws.set_row(row, 22)
-        ws.merge_range(row, 0, row, 11, 'GRAND TOTAL', tot_lbl)
-        ws.write(row, 11, grand_ot,    tot_fmt)
-        ws.write(row, 12, grand_base,  tot_fmt)
-        ws.write(row, 13, grand_total, tot_fmt)
-        ws.write(row, 14, '',          tot_lbl)
+        ws.merge_range(row, 0, row, 3, 'GRAND TOTAL', tot_lbl)
+        ws.write(row, 4, grand_base,  tot_fmt)
+        ws.write(row, 5, grand_total, tot_fmt)
+        ws.write(row, 6, '',          tot_lbl)
 
         wb.close()
         output.seek(0)
