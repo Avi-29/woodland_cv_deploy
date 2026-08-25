@@ -200,17 +200,8 @@ class DailyPayrollExcelWizard(models.TransientModel):
         if not xlsxwriter:
             raise UserError('xlsxwriter is not installed. Run: pip install xlsxwriter')
 
-        records = self.env['daily.payroll'].search(
-            self._build_domain(),
-            order='department_id, shift_id, employee_id'
-        )
-        records = records.sorted(
-            key=lambda r: (
-                r.department_id.name or '',
-                r.shift_id.name or '',
-                r.employee_id.zk_badge_no_int,
-            )
-        )
+        records = self.env['daily.payroll'].search(self._build_domain())
+        records = records.sorted(key=lambda r: r.employee_id.zk_badge_no_int)
 
         output = io.BytesIO()
         wb     = xlsxwriter.Workbook(output, {'in_memory': True})
@@ -218,9 +209,6 @@ class DailyPayrollExcelWizard(models.TransientModel):
         hdr_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 11,
                                      'bg_color': '#1F3864', 'font_color': '#FFFFFF',
                                      'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
-        grp_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 12,
-                                     'bg_color': '#D9E1F2', 'border': 1,
-                                     'align': 'center', 'valign': 'vcenter'})
         cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'})
         num_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'num_format': '#,##0.00', 'valign': 'vcenter'})
@@ -250,12 +238,6 @@ class DailyPayrollExcelWizard(models.TransientModel):
         ]
         WIDTHS = [6, 12, 24, 12, 28, 20, 12, 10, 12, 14, 14, 12, 12, 14, 20]
 
-        groups = {}
-        for r in records:
-            dept  = r.department_id.name or 'No Department'
-            shift = r.shift_id.name if r.shift_id else 'No Shift'
-            groups.setdefault((dept, shift), []).append(r)
-
         title_parts = [self.report_date.strftime('%d %B %Y')]
         if self.department_id:
             title_parts.append(self.department_id.name)
@@ -276,71 +258,47 @@ class DailyPayrollExcelWizard(models.TransientModel):
         row = 2
         grand_base = grand_ot = grand_total = 0.0
 
-        for (dept, shift) in sorted(groups.keys()):
-            recs = groups[(dept, shift)]
+        for c, h in enumerate(COLS):
+            ws.write(row, c, h, hdr_fmt)
+        ws.set_row(row, 42)
+        row += 1
 
-            # Department row — centered, taller
-            ws.merge_range(row, 0, row, len(COLS) - 1, f'{dept}   |   {shift}', grp_fmt)
-            ws.set_row(row, 30)
+        sl_no = 1
+        for r in records:
+            ws.set_row(row, 24)
+            badge_no = r.employee_id.zk_badge_no or ''
+
+            if r.is_day_off:
+                status_str = 'Day Off'
+                s_fmt      = dayoff_fmt
+            elif r.present:
+                status_str = 'Present'
+                s_fmt      = cell_fmt
+            else:
+                status_str = 'Absent'
+                s_fmt      = absent_fmt
+
+            ws.write(row, 0,  sl_no,                       cell_fmt)
+            ws.write(row, 1,  badge_no,                    cell_fmt)
+            ws.write(row, 2,  r.employee_id.name or '',    cell_fmt)
+            ws.write_datetime(row, 3, r.work_date,         date_fmt)
+            ws.write(row, 4,  r.department_id.name or '',  cell_fmt)
+            ws.write(row, 5,  r.shift_id.name if r.shift_id else '', cell_fmt)
+            ws.write(row, 6,  status_str,                  s_fmt)
+            ws.write(row, 7,  r.hours_worked,              num_fmt)
+            ws.write(row, 8,  r.wage,                      num_fmt)
+            ws.write(row, 9,  r.hourly_rate,               rate_fmt)
+            ws.write(row, 10, r.ot_hours,                  num_fmt if r.ot_hours == 0 else ot_fmt)
+            ws.write(row, 11, r.ot_amount,                 num_fmt if r.ot_amount == 0 else ot_fmt)
+            ws.write(row, 12, r.amount,                    num_fmt)
+            ws.write(row, 13, r.total_amount,              num_fmt)
+            ws.write(row, 14, '',                          cell_fmt)
+
+            grand_base  += r.amount
+            grand_ot    += r.ot_amount
+            grand_total += r.total_amount
+            sl_no += 1
             row += 1
-
-            for c, h in enumerate(COLS):
-                ws.write(row, c, h, hdr_fmt)
-            ws.set_row(row, 42)
-            row += 1
-
-            g_base = g_ot = g_total = 0.0
-            sl_no  = 1
-
-            for r in recs:
-                ws.set_row(row, 24)
-                badge_no = r.employee_id.zk_badge_no or ''
-
-                if r.is_day_off:
-                    status_str = 'Day Off'
-                    s_fmt      = dayoff_fmt
-                elif r.present:
-                    status_str = 'Present'
-                    s_fmt      = cell_fmt
-                else:
-                    status_str = 'Absent'
-                    s_fmt      = absent_fmt
-
-                ws.write(row, 0,  sl_no,                       cell_fmt)
-                ws.write(row, 1,  badge_no,                    cell_fmt)
-                ws.write(row, 2,  r.employee_id.name or '',    cell_fmt)
-                ws.write_datetime(row, 3, r.work_date,         date_fmt)
-                ws.write(row, 4,  r.department_id.name or '',  cell_fmt)
-                ws.write(row, 5,  r.shift_id.name if r.shift_id else '', cell_fmt)
-                ws.write(row, 6,  status_str,                  s_fmt)
-                ws.write(row, 7,  r.hours_worked,              num_fmt)
-                ws.write(row, 8,  r.wage,                      num_fmt)
-                ws.write(row, 9,  r.hourly_rate,               rate_fmt)
-                ws.write(row, 10, r.ot_hours,                  num_fmt if r.ot_hours == 0 else ot_fmt)
-                ws.write(row, 11, r.ot_amount,                 num_fmt if r.ot_amount == 0 else ot_fmt)
-                ws.write(row, 12, r.amount,                    num_fmt)
-                ws.write(row, 13, r.total_amount,              num_fmt)
-                ws.write(row, 14, '',                          cell_fmt)
-
-                g_base  += r.amount
-                g_ot    += r.ot_amount
-                g_total += r.total_amount
-                sl_no   += 1
-                row += 1
-
-            ws.set_row(row, 22)
-            for c in range(12):
-                ws.write(row, c, '', tot_lbl)
-            ws.write(row, 12, f'Subtotal  ({len(recs)} emp)', tot_lbl)
-            ws.write(row, 11, g_ot,    tot_fmt)
-            ws.write(row, 12, g_base,  tot_fmt)
-            ws.write(row, 13, g_total, tot_fmt)
-            ws.write(row, 14, '',      tot_lbl)
-
-            grand_base  += g_base
-            grand_ot    += g_ot
-            grand_total += g_total
-            row += 2
 
         ws.set_row(row, 22)
         ws.merge_range(row, 0, row, 11, 'GRAND TOTAL', tot_lbl)
