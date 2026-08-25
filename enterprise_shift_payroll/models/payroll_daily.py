@@ -193,7 +193,7 @@ class DailyPayrollExcelWizard(models.TransientModel):
         if self.shift_id:
             domain.append(('shift_id', '=', self.shift_id.id))
         if self.gender:
-            domain.append(('employee_id.gender', '=', self.gender))
+            domain.append(('employee_id.sex', '=', self.gender))
         return domain
 
     def action_export_excel(self):
