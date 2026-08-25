@@ -22,9 +22,10 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     display: flex;
     flex-direction: column;
 
-    // FIX: The entire dashboard acts as the main single-page vertical scroll layer
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    // The table itself is the single scrolling region (see .ahad_table_scroll
+    // below) so its sticky thead has one unambiguous scroll ancestor to pin
+    // against — header/toolbar/legend/pagination stay put around it.
+    overflow: hidden !important;
 
     padding: 18px 22px 32px;
     box-sizing: border-box;
@@ -143,14 +144,23 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
 .ahad_empty_icon { display: block; font-size: 36px; margin-bottom: 8px; }
 
 // ── Table container ───────────────────────────────────────────────────────────
+// Grows to fill whatever vertical space is left inside .ahad_wrapper once the
+// header/toolbar/legend/pagination have taken theirs, and is the only element
+// that scrolls — min-height:0 is required for a flex child to shrink below
+// its content size instead of pushing the wrapper to overflow.
 .ahad_table_outer {
     width: 100%;
     margin-bottom: 12px;
-    flex-shrink: 0; // Prevents layout deformation down page tree
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 .ahad_table_scroll {
-    overflow-x: auto;            // Retain horizontal scroll strictly for calendar days
-    overflow-y: visible !important; // Prevent any micro vertical scroll containers
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;   // single scroll container, both axes — sticky thead/columns pin against this
     background: #fff;
     border: 1px solid $border;
     border-radius: $radius;
@@ -215,9 +225,50 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     z-index: 4;
 }
 
+// Explicit opaque background is required here: these headers are sticky
+// (see below), and a sticky cell relying only on its inherited `thead tr`
+// background lets the scrolling body rows' colors show/blend through it,
+// which looks like the header's background color "changing on scroll".
 .ahad_th_date  { min-width: 40px; font-size: 10.5px; white-space: pre-line;
-                 line-height: 1.25; color: #475569; text-align: center; }
-.ahad_th_summary { min-width: 52px; text-align: center; }
+                 line-height: 1.25; color: #475569; text-align: center;
+                 background: #f1f5f9; }
+.ahad_th_summary { min-width: 52px; text-align: center; background: #f1f5f9; }
+
+// Sticky header row(s) (vertical) — thead stays pinned to the top of
+// .ahad_table_scroll's own scrollport instead of scrolling away with the
+// body rows. Corner cells that are sticky both left (column) AND top
+// (row) get the highest z-index so they stay above the plain top-sticky
+// date headers when the table is also scrolled horizontally.
+//
+// The attendance table has a single header row, so top:0 applies to
+// every th uniformly. The leave-summary table's header spans TWO
+// physical <tr>s (a Total/month banner row whose Employee/Badge/
+// Department cells use rowspan="2", plus a SL/CL/LWP sub-header row) —
+// the second row's cells must stick just below the first row's height,
+// not on top of it, so they need their own offset.
+#attendance_table_nm thead th {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+}
+#attendance_table_nm thead th.ahad_th_sticky {
+    z-index: 7;
+}
+
+#leave_summary_table_nm thead tr:first-child th {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    height: 34px;
+}
+#leave_summary_table_nm thead tr:first-child th.ahad_th_sticky {
+    z-index: 7;
+}
+#leave_summary_table_nm thead tr:nth-child(2) th {
+    position: sticky;
+    top: 34px;
+    z-index: 6;
+}
 
 // Row hover
 .ahad_table tbody tr {

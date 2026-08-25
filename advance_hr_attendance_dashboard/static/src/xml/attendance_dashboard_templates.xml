@@ -317,8 +317,8 @@
                             t-att-data-emp-id="employee.id">
                             <!-- Employee (fixed width) -->
                             <td class="ahad_td_sticky ahad_td_emp ahad_clickable"
-                                t-on-click="() => this.onClickEmployee(employee.id)"
-                                title="Open employee record">
+                                t-on-click="(ev) => this.onClickEmployee(ev, employee.id)"
+                                title="Open employee record (Ctrl/Cmd+click to open in a new tab)">
                                 <span t-attf-class="ahad_avatar {{ employee.is_present_today ? 'ahad_avatar_present' : '' }}" t-out="employee.name[0]"/>
                                 <span t-attf-class="ahad_emp_name {{ employee.is_present_today ? 'ahad_emp_name_present' : '' }}" t-out="employee.name"/>
                             </td>
@@ -405,13 +405,13 @@
                             </t>
                         </tr>
                         <tr>
-                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#6CC1ED40;color:#0b5f8a;font-weight:700;">SL</th>
-                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#30C38140;color:#1b6b45;font-weight:700;">CL</th>
-                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#F0605040;color:#96261b;font-weight:700;">LWP</th>
+                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#DAEFFB;color:#0b5f8a;font-weight:700;">SL</th>
+                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#CBF0DF;color:#1b6b45;font-weight:700;">CL</th>
+                            <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#FBD7D3;color:#96261b;font-weight:700;">LWP</th>
                             <t t-foreach="leaveSummaryMonthLabels" t-as="mLabel2" t-key="mLabel2_index">
-                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#6CC1ED40;color:#0b5f8a;font-weight:700;">SL</th>
-                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#30C38140;color:#1b6b45;font-weight:700;">CL</th>
-                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#F0605040;color:#96261b;font-weight:700;">LWP</th>
+                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#DAEFFB;color:#0b5f8a;font-weight:700;">SL</th>
+                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#CBF0DF;color:#1b6b45;font-weight:700;">CL</th>
+                                <th style="width:40px;min-width:40px;font-size:10px;padding:3px 2px;background:#FBD7D3;color:#96261b;font-weight:700;">LWP</th>
                             </t>
                         </tr>
                     </thead>
@@ -423,8 +423,8 @@
                         </t>
                         <tr t-foreach="state.leaveSummaryData" t-as="employee" t-key="employee.id">
                             <td class="ahad_td_sticky ahad_td_emp ahad_clickable"
-                                t-on-click="() => this.onClickEmployee(employee.id)"
-                                title="Open employee record">
+                                t-on-click="(ev) => this.onClickEmployee(ev, employee.id)"
+                                title="Open employee record (Ctrl/Cmd+click to open in a new tab)">
                                 <span class="ahad_avatar" t-out="employee.name[0]"/>
                                 <span class="ahad_emp_name" t-out="employee.name"/>
                             </td>

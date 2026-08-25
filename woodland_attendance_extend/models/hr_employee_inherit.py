@@ -35,7 +35,7 @@ class HrEmployee(models.Model):
         ('4', 'Friday'),
         ('5', 'Saturday'),
         ('6', 'Sunday'),
-    ], string="Weekly Day Off", default='4',
+    ], string="Weekly Day Off",
         help="Recurring weekly day off (e.g. Friday). "
              "Working days = calendar days − occurrences of this weekday in the period.")
 
@@ -104,6 +104,16 @@ class HrEmployee(models.Model):
             },
             "domain": [('employee_id', '=', self.id)],
         }
+
+    @api.model
+    def name_search(self, name='', domain=None, operator='ilike', limit=100):
+        domain = list(domain or [])
+        if name:
+            domain = ['|', ('name', operator, name), ('zk_badge_no', operator, name)] + domain
+        employees = self.search(domain)
+        employees = employees.sorted(
+            key=lambda e: int(e.zk_badge_no) if e.zk_badge_no and e.zk_badge_no.isdigit() else float('inf'))[:limit]
+        return [(emp.id, emp.display_name) for emp in employees]
 
 class HrDepartment(models.Model):
     _inherit = 'hr.department'

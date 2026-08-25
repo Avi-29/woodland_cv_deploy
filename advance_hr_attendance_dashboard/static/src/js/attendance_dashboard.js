@@ -285,7 +285,13 @@ class AttendanceDashboard extends Component {
         });
     }
 
-    onClickEmployee(employeeId) {
+    onClickEmployee(ev, employeeId) {
+        // Ctrl/Cmd+click → open the employee record in a new browser tab
+        // instead of navigating away from the dashboard.
+        if (ev && (ev.ctrlKey || ev.metaKey)) {
+            window.open(`/odoo/hr.employee/${employeeId}`, '_blank');
+            return;
+        }
         this.action.doAction({ type: 'ir.actions.act_window', res_model: 'hr.employee', res_id: employeeId, views: [[false, 'form']], target: 'current' });
     }
 

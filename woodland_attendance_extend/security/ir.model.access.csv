@@ -4,6 +4,7 @@ access_attendance_report_wizard,access_attendance_report_wizard,model_attendance
 access_hr_swap_user,hr.swap_user,model_hr_swap,hr.group_hr_user,1,1,1,0
 access_hr_swap_manager,hr.swap_manager,model_hr_swap,hr.group_hr_manager,1,1,1,1
 access_hr_badge_print_wizard,access_hr_badge_print_wizard,model_hr_badge_print_wizard,base.group_user,1,1,1,1
+access_hr_approval_sheet_wizard,access_hr_approval_sheet_wizard,model_hr_approval_sheet_wizard,base.group_user,1,1,1,1
 
 
 

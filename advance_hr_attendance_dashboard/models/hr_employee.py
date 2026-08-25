@@ -296,7 +296,7 @@ class HrEmployee(models.Model):
                 lv_range = pandas.date_range(
                     lv['request_date_from'],
                     lv['request_date_to'],
-                    freq='d'
+                    freq='D'
                 ).strftime("%Y-%m-%d").tolist()
                 for d in lv_range:
                     if d in dates:  # only include dates in the viewed month
@@ -539,7 +539,7 @@ class HrEmployee(models.Model):
             days = pandas.date_range(
                 max(date.fromisoformat(r['date_from']), date_from),
                 min(date.fromisoformat(r['date_to']), date_to),
-                freq='d'
+                freq='D'
             ).strftime("%Y-%m-%d").tolist()
             leave_days_by_emp.setdefault(r['employee_id'], set()).update(days)
 
@@ -683,19 +683,22 @@ class HrEmployee(models.Model):
                 r['employee_id'],
                 {m: {'sl': 0, 'cl': 0, 'lwp': 0} for m in range(1, 13)}
             )
-            for d in pandas.date_range(d_from, d_to, freq='d'):
+            for d in pandas.date_range(d_from, d_to, freq='D'):
                 emp_months[d.month][key] += 1
 
         # ── real-time Absent → LWP top-up (per month, Total follows) ────────
-        # From REALTIME_ABSENT_EPOCH (2026-05-01) to today (Asia/Dhaka), any
-        # unexplained absent day (no leave filed) is added into that same
-        # month's LWP count. Only relevant while viewing the current Dhaka
-        # year — the Total column is just the sum of the (now topped-up)
-        # months, so it stays consistent automatically.
+        # From REALTIME_ABSENT_EPOCH (2026-05-01) up to (but excluding) the
+        # current Dhaka month, any unexplained absent day (no leave filed)
+        # is added into that same month's LWP count. The current month is
+        # skipped since it is still in progress and its absences aren't
+        # final yet. Only relevant while viewing the current Dhaka year —
+        # the Total column is just the sum of the (now topped-up) months,
+        # so it stays consistent automatically.
         today_dhaka = self._dhaka_today()
         if y == today_dhaka.year:
+            current_month_start = date(today_dhaka.year, today_dhaka.month, 1)
             range_start = max(REALTIME_ABSENT_EPOCH, year_start)
-            range_end = min(today_dhaka, year_end)
+            range_end = min(current_month_start - timedelta(days=1), year_end)
             cursor = range_start
             while cursor <= range_end:
                 if cursor.month == 12:

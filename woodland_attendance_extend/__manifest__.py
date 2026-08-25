@@ -30,6 +30,7 @@ Long description of module's purpose
         'views/hr_swap_views.xml',
         'views/id_card.xml',
         'wizard/id_card_batch.xml',
+        'wizard/approval_sheet_wizard.xml',
         'views/menu.xml'
     ],
 }

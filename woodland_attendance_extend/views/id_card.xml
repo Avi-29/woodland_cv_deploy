@@ -12,234 +12,192 @@
          Expects `doc` in scope. Safe to embed multiple times on one page
          (used by both the single-badge report and the A4 4-per-page sheet). -->
     <template id="report_id_card_card">
-        <style>
-            *{ box-sizing:border-box; margin:0; padding:0; }
-            table.idc-outer{ border-collapse:collapse; width:96.3mm; height:72mm; table-layout:fixed; font-family:Arial,
-            Helvetica, sans-serif; }
-            table.idc-outer td{ padding:0; vertical-align:top; overflow:hidden; }
-            table.idc-outer td.card-cell{ width:48mm; }
-            table.idc-outer td.idc-foldcell{ width:0.3mm; }
-            .idc-foldcell .line{ border-left:0.3mm dashed #999; height:72mm; width:0; margin:0 auto; }
+    <style>
+        *{ box-sizing:border-box; margin:0; padding:0; }
 
-            .idc-card{
-            width:48mm; height:72mm;
-            border:0.35mm solid #111;
-            padding:2.3mm 2.5mm;
+        /* Card is 6.0cm wide x 8.5cm tall per face (portrait). Front and
+           back sit side by side (not stacked) so the printed sheet for
+           one card is 12.0cm wide x 8.5cm tall (two 6cm-wide faces + a
+           fold line) — fold along the vertical midline to get the final
+           6.0cm x 8.5cm badge. */
+        table.idc-outer{ border-collapse:collapse; width:120.3mm; height:85mm; table-layout:fixed; font-family:Arial, Helvetica, sans-serif; }
+        table.idc-outer td{ padding:0; vertical-align:top; overflow:hidden; }
+        table.idc-outer td.card-cell{ width:60mm; }
+        table.idc-outer td.idc-foldcell{ width:0.3mm; }
+        .idc-foldcell .line{ border-left:0.4mm dashed #999; height:85mm; width:0; margin:0 auto; }
+
+        .idc-card{
+            width:60mm; height:85mm;
+            border:0.4mm solid #111;
+            padding:2.8mm 3.2mm;
             position:relative;
             overflow:hidden;
             background:#ffffff;
-            }
+        }
 
-            /* header: logo only, centered, no wordmark/branding text.
-            NOTE: do NOT change this back to display:flex — flexbox does not
-            lay out correctly in this system's wkhtmltopdf and the cards will
-            stack vertically instead of sitting side by side. */
-            .idc-header{ overflow:hidden; margin:0 4mm 1mm 4mm; min-height:13mm; text-align:center; }
-            .idc-logo-circle{
-            width:100%; height:13mm; border-radius:1mm;
-            border:0.25mm solid #999;
+        /* header: logo only, centered, no wordmark/branding text.
+           NOTE: do NOT change this back to display:flex — flexbox does not
+           lay out correctly in this system's wkhtmltopdf and the cards will
+           stack vertically instead of sitting side by side. */
+        .idc-header{ overflow:hidden; margin:0 5mm 1.4mm 5mm; min-height:15.6mm; text-align:center; }
+        .idc-logo-circle{
+            width:100%; height:15.6mm; border-radius:1mm;
+            border:0.3mm solid #999;
             display:inline-block; text-align:center; background:#fff; overflow:hidden;
-            }
-            .idc-logo-circle img{ width:100%; height:100%; object-fit:fill; }
-            .idc-logo-fallback{ font-size:6pt; font-weight:bold; line-height:13mm; }
-            .idc-logo-fallback .hs-h{ color:#c96a4b; }
-            .idc-logo-fallback .hs-s{ color:#2f6fb3; }
+        }
+        .idc-logo-circle img{ width:100%; height:100%; object-fit:fill; }
+        .idc-logo-fallback{ font-size:7.5pt; font-weight:bold; line-height:15.6mm; }
+        .idc-logo-fallback .hs-h{ color:#c96a4b; }
+        .idc-logo-fallback .hs-s{ color:#2f6fb3; }
 
-            .idc-photo-wrap{ text-align:center; margin:0 4mm 3.5mm 4mm; }
-            .idc-photo{
-            width:18mm; height:21mm;
-            border:0.5mm solid #2f6fb3; border-radius:1mm;
+        .idc-photo-wrap{ text-align:center; margin:0 5mm 4.3mm 5mm; }
+        .idc-photo{
+            width:22mm; height:25.6mm;
+            border:0.6mm solid #2f6fb3; border-radius:1mm;
             overflow:hidden; background:#f7f7f7; display:inline-block;
             position:relative;
-            }
-            .idc-photo .idc-photo-hint{
+        }
+        .idc-photo .idc-photo-hint{
             position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-            font-size:5.5pt; color:#999; text-align:center; width:90%;
-            }
+            font-size:6.4pt; color:#999; text-align:center; width:90%;
+        }
 
-            .idc-fields{ font-size:6.5pt; line-height:1.45; color:#111; margin:0 4mm; font-style:italic; }
-            .idc-fields b{ font-weight:800; }
-            .idc-fields div{ white-space:nowrap; overflow:hidden; }
+        .idc-fields{ font-size:7.8pt; line-height:1.5; color:#111; margin:0 5mm; font-style:italic; }
+        .idc-fields b{ font-weight:800; }
+        .idc-fields div{ white-space:nowrap; overflow:hidden; }
 
-            .idc-sign-row{ position:absolute; bottom:2.5mm; left:2.5mm; right:2.5mm; width:40mm;
-            border-collapse:separate; border-spacing:3mm 0; }
-            .idc-sign-cell{ width:50%; text-align:center; }
-            .idc-sign-space{ height:5mm; }
-            .idc-sign-line{ border-top:0.3mm solid #111; }
-            .idc-sign-label{ font-size:5pt; font-style:italic; margin-top:0.6mm; color:#111; white-space:nowrap; }
+        .idc-sign-row{ position:absolute; bottom:2.8mm; left:2.8mm; right:2.8mm; width:48.3mm; border-collapse:separate; border-spacing:5.7mm 0; }
+        .idc-sign-cell{ width:50%; text-align:center; }
+        .idc-sign-space{ height:5.7mm; }
+        .idc-sign-line{ border-top:0.3mm solid #111; }
+        .idc-sign-label{ font-size:6.4pt; font-style:italic; margin-top:0.7mm; color:#111; white-space:nowrap; }
 
-            .idc-legal{ font-size:6pt; line-height:1.4; text-align:justify; color:#111; margin-bottom:1.5mm; }
-            .idc-addr{ font-size:7pt; line-height:1.55; color:#111; }
-            .idc-addr .label{ font-weight:700; }
-            .idc-personal{ font-size:7pt; line-height:1.6; margin-top:2mm; color:#111; }
-            .idc-personal .title{ font-weight:800; text-decoration:underline; margin-bottom:0.5mm; }
-        </style>
+        .idc-legal{ font-size:7.1pt; line-height:1.35; text-align:justify; color:#111; margin-bottom:1.8mm; }
+        .idc-addr{ font-size:8.5pt; line-height:1.5; color:#111; }
+        .idc-addr .label{ font-weight:700; }
+        .idc-personal{ font-size:8.5pt; line-height:1.55; margin-top:2.5mm; color:#111; }
+        .idc-personal .title{ font-weight:800; text-decoration:underline; margin-bottom:0.7mm; }
+    </style>
 
-        <table class="idc-outer">
-            <tr>
+    <table class="idc-outer"><tr>
 
-                <!-- ============ FRONT (left cell) ============ -->
-                <td class="card-cell">
-                    <div class="idc-card">
-                        <!-- rotated side labels done via SVG <text rotate>, NOT CSS
-                             writing-mode — writing-mode does not rotate in this
-                             system's wkhtmltopdf and the text stays horizontal,
-                             overlapping the header, exactly like your last PDF.
-                             Kept short and confined to a narrow vertical strip at
-                             the very edges (outside the 4mm content margin used by
-                             idc-header/idc-fields/idc-photo-wrap) so it no longer
-                             overlaps the NAME field. -->
-                        <svg width="4mm" height="66mm" viewBox="0 0 40 660"
-                             style="position:absolute; left:0.9mm; top:4.5mm;">
-                            <text x="20" y="330" text-anchor="middle" transform="rotate(-90 20 330)"
-                                  font-size="20" font-style="italic" font-weight="bold" fill="#111"
-                                  font-family="Arial, Helvetica, sans-serif">Date of join:
-                                <t t-esc="doc.contract_date_start"/>
-                            </text>
-                        </svg>
-                        <svg width="4mm" height="66mm" viewBox="0 0 40 660"
-                             style="position:absolute; right:0.9mm; top:4.5mm;">
-                            <text x="20" y="330" text-anchor="middle" transform="rotate(90 20 330)"
-                                  font-size="20" font-style="italic" font-weight="bold" fill="#111"
-                                  font-family="Arial, Helvetica, sans-serif">Validity:
-                                <t t-esc="'Last Date of Job'"/>
-                            </text>
-                        </svg>
+        <!-- ============ FRONT (left cell) ============ -->
+        <td class="card-cell">
+            <div class="idc-card">
+                <!-- rotated side labels done via SVG <text rotate>, NOT CSS
+                     writing-mode — writing-mode does not rotate in this
+                     system's wkhtmltopdf and the text stays horizontal,
+                     overlapping the header, exactly like your last PDF.
+                     Kept short and confined to a narrow vertical strip at
+                     the very edges (outside the 5mm content margin used by
+                     idc-header/idc-fields/idc-photo-wrap) so it no longer
+                     overlaps the NAME field. -->
+                <svg width="5mm" height="79mm" viewBox="0 0 70 1120" style="position:absolute; left:1.1mm; top:2.8mm;">
+                    <text x="35" y="560" text-anchor="middle" transform="rotate(-90 35 560)"
+                          font-size="34" font-style="italic" font-weight="bold" fill="#111"
+                          font-family="Arial, Helvetica, sans-serif">Date of join: <t t-esc="doc.contract_date_start"/></text>
+                </svg>
+                <svg width="5mm" height="79mm" viewBox="0 0 70 1120" style="position:absolute; right:1.1mm; top:2.8mm;">
+                    <text x="35" y="560" text-anchor="middle" transform="rotate(90 35 560)"
+                          font-size="34" font-style="italic" font-weight="bold" fill="#111"
+                          font-family="Arial, Helvetica, sans-serif">Validity: <t t-esc="'Last Date of Job'"/></text>
+                </svg>
 
-                        <div class="idc-header">
-                            <div class="idc-logo-circle">
-                                <t t-if="doc.company_id.logo">
-                                    <img t-att-src="'data:image/png;base64,%s' % doc.company_id.logo.decode('utf-8')"/>
-                                </t>
-                                <t t-else="">
-                                    <span class="idc-logo-fallback">
-                                        <span class="hs-h">H</span>
-                                        <span class="hs-s">&amp;S</span>
-                                    </span>
-                                </t>
-                            </div>
-                        </div>
-
-                        <div class="idc-photo-wrap">
-                            <div class="idc-photo">
-                                <span class="idc-photo-hint">Attach Photo</span>
-                            </div>
-                        </div>
-
-                        <div class="idc-fields">
-                            <div>
-                                <b>NAME:</b>
-                                <t t-esc="doc.name"/>
-                            </div>
-                            <div>
-                                <b>ID NO:</b>
-                                <t t-esc="doc.zk_badge_no or doc.barcode or ''"/>
-                            </div>
-                            <div>
-                                <b>DESIG:</b>
-                                <t t-esc="doc.job_title or (doc.job_id and doc.job_id.name) or ''"/>
-                            </div>
-                            <div>
-                                <b>SECTION:</b>
-                                <t t-esc="doc.department_id and doc.department_id.name or ''"/>
-                            </div>
-                            <div>
-                                <b>BLOOD GROUP:</b>
-                                <t t-esc="doc.blood_group"/>
-                            </div>
-                        </div>
-
-                        <table class="idc-sign-row">
-                            <tr>
-                                <td class="idc-sign-cell">
-                                    <div class="idc-sign-space"></div>
-                                    <div class="idc-sign-line"></div>
-                                    <div class="idc-sign-label">Sign of Card Holder</div>
-                                </td>
-                                <td class="idc-sign-cell">
-                                    <div class="idc-sign-space"></div>
-                                    <div class="idc-sign-line"></div>
-                                    <div class="idc-sign-label">Authorized Signature</div>
-                                </td>
-                            </tr>
-                        </table>
+                <div class="idc-header">
+                    <div class="idc-logo-circle">
+                        <t t-if="doc.company_id.logo">
+                            <img t-att-src="'data:image/png;base64,%s' % doc.company_id.logo.decode('utf-8')"/>
+                        </t>
+                        <t t-else="">
+                            <span class="idc-logo-fallback"><span class="hs-h">H</span><span class="hs-s">&amp;S</span></span>
+                        </t>
                     </div>
-                </td>
+                </div>
 
-                <td class="idc-foldcell">
-                    <div class="line"></div>
-                </td>
-
-                <!-- ============ BACK (right cell) ============ -->
-                <td class="card-cell">
-                    <div class="idc-card">
-                        <div class="idc-legal">
-                            This card is issued for limited purpose on behalf of
-                            <t t-esc="doc.company_id.name or ''"/>
-                            only and the authorities concerned are
-                            requested to extend all sorts of cooperation in professional work of the card
-                            holder. The company will not be liable for any immoral, illegal or subversive
-                            activity of the card holder.
-                        </div>
-
-                        <div class="idc-header">
-                            <div class="idc-logo-circle">
-                                <t t-if="doc.company_id.logo">
-                                    <img t-att-src="'data:image/png;base64,%s' % doc.company_id.logo.decode('utf-8')"/>
-                                </t>
-                                <t t-else="">
-                                    <span class="idc-logo-fallback">
-                                        <span class="hs-h">H</span>
-                                        <span class="hs-s">&amp;S</span>
-                                    </span>
-                                </t>
-                            </div>
-                        </div>
-
-                        <div class="idc-addr">
-                            <t t-esc="'150,Moshan, Baruipara'"/>
-                            <br/>
-                            <t t-esc="'Mirpur, Kushtia-7000'"/>
-                            <br/>
-                            <span class="label">Phone:</span>
-                            <t t-esc="doc.company_id.phone or ''"/>
-                            <br/>
-                            <span class="label">Website:</span>
-                            <t t-esc="doc.company_id.website or ''"/>
-                            <br/>
-                            <span class="label">Email:</span>
-                            <t t-esc="doc.company_id.email or ''"/>
-                        </div>
-
-                        <div class="idc-personal">
-                            <div class="title">Personal Information:</div>
-                            <div>NID NO:
-                                <t t-esc="doc.identification_id or ''"/>
-                            </div>
-                            <div>CONTACT:
-                                <t t-esc="doc.mobile_phone or doc.work_phone or ''"/>
-                            </div>
-                        </div>
+                <div class="idc-photo-wrap">
+                    <div class="idc-photo">
+                        <span class="idc-photo-hint">Attach Photo</span>
                     </div>
-                </td>
+                </div>
 
-            </tr>
-        </table>
-    </template>
+                <div class="idc-fields">
+                    <div><b>NAME:</b> <t t-esc="doc.name"/></div>
+                    <div><b>ID NO:</b> <t t-esc="doc.zk_badge_no or doc.barcode or ''"/></div>
+                    <div><b>DESIG:</b> <t t-esc="doc.job_title or (doc.job_id and doc.job_id.name) or ''"/></div>
+                    <div><b>SECTION:</b> <t t-esc="doc.department_id and doc.department_id.name or ''"/></div>
+                    <div><b>BLOOD GROUP:</b> <t t-esc="doc.blood_group"/></div>
+                </div>
+
+                <table class="idc-sign-row"><tr>
+                    <td class="idc-sign-cell">
+                        <div class="idc-sign-space"></div>
+                        <div class="idc-sign-line"></div>
+                        <div class="idc-sign-label">Sign of Card Holder</div>
+                    </td>
+                    <td class="idc-sign-cell">
+                        <div class="idc-sign-space"></div>
+                        <div class="idc-sign-line"></div>
+                        <div class="idc-sign-label">Authorized Signature</div>
+                    </td>
+                </tr></table>
+            </div>
+        </td>
+
+        <td class="idc-foldcell"><div class="line"></div></td>
+
+        <!-- ============ BACK (right cell) ============ -->
+        <td class="card-cell">
+            <div class="idc-card">
+                <div class="idc-legal">
+                    This card is issued for limited purpose on behalf of
+                    <t t-esc="doc.company_id.name or ''"/> only and the authorities concerned are
+                    requested to extend all sorts of cooperation in professional work of the card
+                    holder. The company will not be liable for any immoral, illegal or subversive
+                    activity of the card holder.
+                </div>
+
+                <div class="idc-header">
+                    <div class="idc-logo-circle">
+                        <t t-if="doc.company_id.logo">
+                            <img t-att-src="'data:image/png;base64,%s' % doc.company_id.logo.decode('utf-8')"/>
+                        </t>
+                        <t t-else="">
+                            <span class="idc-logo-fallback"><span class="hs-h">H</span><span class="hs-s">&amp;S</span></span>
+                        </t>
+                    </div>
+                </div>
+
+                <div class="idc-addr">
+                    <t t-esc="'150,Moshan, Baruipara'"/><br/>
+                    <t t-esc="'Mirpur, Kushtia-7000'"/><br/>
+                    <span class="label">Phone:</span> <t t-esc="doc.company_id.phone or ''"/><br/>
+                    <span class="label">Email:</span> <t t-esc="doc.company_id.email or ''"/>
+                </div>
+
+                <div class="idc-personal">
+                    <div class="title">Personal Information:</div>
+                    <div>NID NO: <t t-esc="doc.identification_id or ''"/></div>
+                    <div>CONTACT: <t t-esc="doc.mobile_phone or doc.work_phone or ''"/></div>
+                </div>
+            </div>
+        </td>
+
+    </tr></table>
+</template>
 
     <!-- Single-badge-per-page report: bare card + forced page-break, wrapped once in html_container. -->
     <template id="report_id_card_page">
-        <div style="page-break-after: always; width:96.3mm;">
+        <div style="page-break-after: always; width:121mm;">
             <t t-call="woodland_attendance_extend.report_id_card_card"/>
         </div>
     </template>
 
     <record id="paperformat_id_card" model="report.paperformat">
-        <field name="name">ID Card (Front+Back, 48mm x 72mm, foldable)</field>
+        <field name="name">ID Card (Front+Back side by side, 6.0cm x 8.5cm, foldable)</field>
         <field name="default" eval="False"/>
         <field name="format">custom</field>
-        <field name="page_height">72</field>
-        <field name="page_width">97</field>
+        <field name="page_height">85</field>
+        <field name="page_width">121</field>
         <field name="orientation">Landscape</field>
         <field name="margin_top">0</field>
         <field name="margin_bottom">0</field>
@@ -259,13 +217,21 @@
         <field name="print_report_name">'ID Card - %s' % (object.name)</field>
         <field name="binding_model_id" ref="hr.model_hr_employee"/>
         <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_id_card"/>
     </record>
 
-    <!-- ============ A4 sheet: 4 badges per page ============ -->
+    <!-- ============ A4 sheet: 4 badges per page (2 columns x 2 rows)
+         ============
+         Each unit is 121mm wide (front+back side by side) x 85mm tall.
+         On PORTRAIT A4 the usable width is only ~200mm, so just ONE unit
+         fit per row and every row wasted ~75mm of paper. Landscape A4
+         gives ~287mm usable width, which fits exactly 2 units side by
+         side (2 x 126mm = 252mm) x 2 rows (2 x 91mm = 182mm <= ~190mm
+         usable height) = 4 per page, no wasted row. -->
     <template id="report_id_card_a4_document">
         <t t-call="web.html_container">
         <t t-foreach="docs" t-as="doc">
-            <div style="width:96.3mm; height:72mm; display:inline-block; margin:0 2mm 6mm 0; vertical-align:top;">
+            <div style="width:121mm; height:85mm; display:inline-block; margin:0 5mm 6mm 0; vertical-align:top;">
                 <t t-call="woodland_attendance_extend.report_id_card_card"/>
             </div>
         </t>
@@ -273,10 +239,10 @@
     </template>
 
     <record id="paperformat_id_card_a4" model="report.paperformat">
-        <field name="name">ID Card A4 Sheet (4 per page)</field>
+        <field name="name">ID Card A4 Sheet (4 per page, 2x2)</field>
         <field name="default" eval="False"/>
         <field name="format">A4</field>
-        <field name="orientation">Portrait</field>
+        <field name="orientation">Landscape</field>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">5</field>
@@ -293,5 +259,287 @@
         <field name="report_name">woodland_attendance_extend.report_id_card_a4_document</field>
         <field name="report_file">woodland_attendance_extend.report_id_card_a4_document</field>
         <field name="print_report_name">'Employee ID Cards'</field>
+        <field name="paperformat_id" ref="paperformat_id_card_a4"/>
     </record>
+
+
+    <!-- NOTE: web.basic_layout already calls web.html_container internally,
+         so it must NOT be nested inside a second, explicit html_container
+         call here — doing so stuffs a full nested <html> document per
+         employee inside the outer one, which wkhtmltopdf renders as a
+         blank page (see the id-card template above for the same lesson).
+
+         This report is intentionally NOT bound to a specific hr.employee
+         record any more (no binding_model_id, no t-foreach="docs") - it's
+         a blank fillable form that never actually used employee data (every
+         one of its 22 fields is a plain "Insert Field Here" placeholder),
+         so requiring a record to print it made no sense. It always renders
+         exactly one page, regardless of what docs/res_ids it's called with -
+         reachable via the "Print Approval Sheet" menu item, which opens the
+         signatory wizard (hr.approval.sheet.wizard) directly. -->
+    <template id="report_approval_sheet">
+        <t t-call="web.html_container">
+            <t t-set="company" t-value="env.company"/>
+            <div class="article">
+                <div class="page approval-sheet p-4" style="font-family:Arial, sans-serif; line-height:1.5; color:#000; font-size:16px;">
+
+                    <style>
+                        .approval-sheet .value { border-bottom: 1px dotted #000; height: 26px; }
+                        .approval-sheet .num, .approval-sheet .colon { white-space: nowrap; }
+                        .approval-sheet .label { white-space: nowrap; }
+                        .approval-sheet td { vertical-align: bottom; }
+                    </style>
+
+                    <div class="text-center mb-3">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                             style="max-height:90px; max-width:320px;" alt="Company Logo"/>
+                        <h2 t-else="" class="fw-bold mb-0"><t t-esc="company.name or 'H &amp; S Glassware Ltd'"/></h2>
+                        <p class="mb-0 fs-6">150, Moshan, Mirpur, Kushtia.</p>
+                    </div>
+
+                    <h4 class="text-center fw-bold text-decoration-underline my-4">Employment Approval Note Sheet</h4>
+
+                    <div class="text-end mb-4">
+                        Date: <span class="d-inline-block border-bottom" style="width:150px;">&#160;</span>
+                    </div>
+
+                    <table class="table table-borderless w-100 mb-0" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 3%;"/> <!-- Left Number -->
+                            <col style="width: 25%;"/> <!-- Left Label -->
+                            <col style="width: 2%;"/> <!-- Left Colon -->
+                            <col style="width: 20%;"/> <!-- Left Value -->
+
+                            <col style="width: 3%;"/> <!-- Right Number -->
+                            <col style="width: 20%;"/> <!-- Right Label -->
+                            <col style="width: 2%;"/> <!-- Right Colon -->
+                            <col style="width: 25%;"/> <!-- Right Value -->
+                        </colgroup>
+
+                        <tr class="py-2">
+                            <td class="num">1.</td>
+                            <td class="label">Applicant Name</td>
+                            <td class="colon">:</td>
+                            <td class="value" colspan="5">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="num">2.</td>
+                            <td class="label">Father's Name</td>
+                            <td class="colon">:</td>
+                            <td class="value" colspan="5">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="num">3.</td>
+                            <td class="label">Mother's Name</td>
+                            <td class="colon">:</td>
+                            <td class="value" colspan="5">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">4.</td>
+                            <td class="label">Permanent Add, Vill</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">14.</td>
+                            <td class="label">Present Add, Vill</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">5.</td>
+                            <td class="label">Post Office</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">15.</td>
+                            <td class="label">Post Office</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">6.</td>
+                            <td class="label">Thana</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">16.</td>
+                            <td class="label">Thana</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">7.</td>
+                            <td class="label">District</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">17.</td>
+                            <td class="label">District</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">8.</td>
+                            <td class="label">Date Of Birth</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">18.</td>
+                            <td class="label">Present Age</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">9.</td>
+                            <td class="label">Educational Qualification</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">19.</td>
+                            <td class="label">Mobile No</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">10.</td>
+                            <td class="label" style="white-space: normal; line-height: 1.2;">
+                                10. Section where<br/>recruitment is required
+                            </td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">20.</td>
+                            <td class="label">Introducer</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">11.</td>
+                            <td class="label">Applied Position</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">21.</td>
+                            <td class="label">Approved Position</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">12.</td>
+                            <td class="label">Applied Salary</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num">22.</td>
+                            <td class="label">Approved Salary</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td class="num">13.</td>
+                            <td class="label">Examination Result</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                            <td class="num"></td>
+                            <td class="label">Joining Date</td>
+                            <td class="colon">:</td>
+                            <td class="value">
+                                <!-- Insert Field Here -->
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Signatory labels are dynamic: default to the standard 4
+                         roles below, but can be overridden per print run via the
+                         "Print Approval Sheet" wizard, since different employees/
+                         sections need different people's approval. See
+                         report.woodland_attendance_extend.report_approval_sheet
+                         (models/report_approval_sheet.py) for the defaults.
+                         No box/border around them - just a plain rule line above
+                         each name, matching a physically-signed paper form. -->
+                    <table class="table table-borderless w-100 mt-5" style="margin-top:170px; table-layout: fixed;">
+                        <tr>
+                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_1 or 'Sr. Manager'"/>
+                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_2 or 'D.G.M (Production)'"/>
+                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_3 or 'General Manager'"/>
+                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_4 or 'Managing Director'"/>
+                        </tr>
+                    </table>
+
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <record id="paperformat_approval_sheet" model="report.paperformat">
+        <field name="name">Approval Note Sheet A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">15</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">15</field>
+        <field name="margin_right">15</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_approval_sheet" model="ir.actions.report">
+        <field name="name">Employment Approval Note Sheet</field>
+        <field name="model">hr.employee</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">woodland_attendance_extend.report_approval_sheet</field>
+        <field name="report_file">woodland_attendance_extend.report_approval_sheet</field>
+        <field name="print_report_name">'Approval Sheet - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_approval_sheet"/>
+    </record>
+
 </odoo>
