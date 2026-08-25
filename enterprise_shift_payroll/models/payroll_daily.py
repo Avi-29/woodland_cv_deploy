@@ -177,6 +177,11 @@ class DailyPayrollExcelWizard(models.TransientModel):
                                     help='Leave empty to include all departments')
     shift_id      = fields.Many2one('hr.shift', string='Shift',
                                     help='Leave empty for all shifts')
+    gender        = fields.Selection([
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ], string='Gender', help='Leave empty to include all genders')
 
     excel_file  = fields.Binary(string='Excel Report', readonly=True)
     excel_fname = fields.Char(string='Filename',      readonly=True)
@@ -187,6 +192,8 @@ class DailyPayrollExcelWizard(models.TransientModel):
             domain.append(('department_id', '=', self.department_id.id))
         if self.shift_id:
             domain.append(('shift_id', '=', self.shift_id.id))
+        if self.gender:
+            domain.append(('employee_id.gender', '=', self.gender))
         return domain
 
     def action_export_excel(self):
@@ -201,7 +208,7 @@ class DailyPayrollExcelWizard(models.TransientModel):
             key=lambda r: (
                 r.department_id.name or '',
                 r.shift_id.name or '',
-                r.employee_id.zk_badge_no or '99999',
+                r.employee_id.zk_badge_no_int,
             )
         )
 
@@ -254,6 +261,8 @@ class DailyPayrollExcelWizard(models.TransientModel):
             title_parts.append(self.department_id.name)
         if self.shift_id:
             title_parts.append(self.shift_id.name)
+        if self.gender:
+            title_parts.append(dict(self._fields['gender'].selection)[self.gender])
         title_str   = 'Daily Payroll Report  |  ' + '  ·  '.join(title_parts)
         sheet_label = str(self.report_date)[:31]
 
@@ -347,6 +356,7 @@ class DailyPayrollExcelWizard(models.TransientModel):
             f"daily_payroll_{self.report_date}"
             f"{'_' + self.department_id.name.replace(' ', '_') if self.department_id else ''}"
             f"{'_' + self.shift_id.name.replace(' ', '_') if self.shift_id else ''}"
+            f"{'_' + self.gender if self.gender else ''}"
             f".xlsx"
         )
         self.write({'excel_file': base64.b64encode(output.read()), 'excel_fname': fname})
