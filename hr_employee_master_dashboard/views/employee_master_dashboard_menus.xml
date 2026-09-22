@@ -1,0 +1,13 @@
+<odoo>
+    <record id="action_employee_master_dashboard" model="ir.actions.client">
+        <field name="name">Employee Dashboard</field>
+        <field name="tag">employee_master_dashboard</field>
+    </record>
+    <!-- hr's own menus sit at: Human Resources=0, Employees=3, Directory=4,
+         Reporting=95, Configuration=100 — sequence=5 places this right
+         after "Employees" (and "Directory"). -->
+    <menuitem id="menu_employee_master_dashboard" name="Dashboard"
+              parent="hr.menu_hr_root"
+              sequence="5"
+              action="action_employee_master_dashboard"/>
+</odoo>

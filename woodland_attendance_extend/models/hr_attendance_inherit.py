@@ -145,11 +145,10 @@ class HrAttendance(models.Model):
         """
         self.ensure_one()
 
-        # 1. Weekly day_off_day
-        if (
-                self.employee_id.day_off_day
-                and str(attendance_date.weekday()) == self.employee_id.day_off_day
-        ):
+        # 1. Weekly day_off_day (as of attendance_date, following history so a
+        #    later change doesn't retroactively affect this attendance)
+        day_off_day = self.employee_id.get_day_off_day(attendance_date)
+        if day_off_day and str(attendance_date.weekday()) == day_off_day:
             return True
 
         # 2. Public holiday — convert Dhaka day boundaries back to UTC naive

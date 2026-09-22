@@ -266,9 +266,9 @@
         <span class="ahad_legend_tip">💡 Click absent → Create leave | Click OFF/PH → Swap | Click OFF/P or PH/P → Attendance | Right-click OFF/P or PH/P → Create Swap/OT</span>
     </div>
     <div class="ahad_legend" t-if="state.viewMode === 'leaveSummary'">
-        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#6CC1ED;"/> SL — Sick Leave</span>
-        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#30C381;"/> CL — Casual Leave</span>
-        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#F06050;"/> LWP — Leave Without Pay</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#0d47a1;"/> SL — Sick Leave</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#1b5e20;"/> CL — Casual Leave</span>
+        <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#b71c1c;"/> LWP — Leave Without Pay</span>
         <span class="ahad_legend_tip">💡 Day-counts per employee, per month, for <t t-out="state.selectedYear"/> (Asia/Dhaka)</span>
     </div>
 
@@ -340,7 +340,7 @@
                             </td>
                             <!-- Date cells -->
                             <t t-foreach="employee.leave_data" t-as="leave" t-key="leave_index">
-                                <td t-attf-class="ahad_td_cell {{ leave.is_day_off_or_holiday and (leave.state == 'OFF/P' and 'ahad_split_off_p' or 'ahad_split_ph_p') or cellCursor(leave) }} {{ leave.is_sandwich_absent and 'ahad_sandwich_absent' or '' }}"
+                                <td t-attf-class="ahad_td_cell {{ leave.is_day_off_or_holiday and (leave.state == 'OFF/P' and (leave.marked_as_day_off and 'ahad_split_off_p_marked' or 'ahad_split_off_p') or 'ahad_split_ph_p') or cellCursor(leave) }} {{ leave.is_sandwich_absent and 'ahad_sandwich_absent' or '' }}"
                                     t-attf-style="{{ leave.is_day_off_or_holiday and '' or ('background:' + leave.color + ';') }}"
                                     t-att-title="leave.tooltip or ''"
                                     t-att-data-date="leave.leave_date"

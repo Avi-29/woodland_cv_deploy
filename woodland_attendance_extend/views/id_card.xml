@@ -15,21 +15,21 @@
     <style>
         *{ box-sizing:border-box; margin:0; padding:0; }
 
-        /* Card is 6.0cm wide x 8.5cm tall per face (portrait). Front and
-           back sit side by side (not stacked) so the printed sheet for
-           one card is 12.0cm wide x 8.5cm tall (two 6cm-wide faces + a
-           fold line) — fold along the vertical midline to get the final
-           6.0cm x 8.5cm badge. */
-        table.idc-outer{ border-collapse:collapse; width:120.3mm; height:85mm; table-layout:fixed; font-family:Arial, Helvetica, sans-serif; }
+        /* Card is 7.2cm wide x 10.2cm tall per face (portrait) — 120% of the
+           original 6.0cm x 8.5cm. Front and back sit side by side (not
+           stacked) so the printed sheet for one card is 14.4cm wide x
+           10.2cm tall (two 7.2cm-wide faces + a fold line) — fold along the
+           vertical midline to get the final 7.2cm x 10.2cm badge. */
+        table.idc-outer{ border-collapse:collapse; width:144.36mm; height:102mm; table-layout:fixed; font-family:Arial, Helvetica, sans-serif; }
         table.idc-outer td{ padding:0; vertical-align:top; overflow:hidden; }
-        table.idc-outer td.card-cell{ width:60mm; }
-        table.idc-outer td.idc-foldcell{ width:0.3mm; }
-        .idc-foldcell .line{ border-left:0.4mm dashed #999; height:85mm; width:0; margin:0 auto; }
+        table.idc-outer td.card-cell{ width:72mm; }
+        table.idc-outer td.idc-foldcell{ width:0.36mm; }
+        .idc-foldcell .line{ border-left:0.48mm dashed #999; height:102mm; width:0; margin:0 auto; }
 
         .idc-card{
-            width:60mm; height:85mm;
-            border:0.4mm solid #111;
-            padding:2.8mm 3.2mm;
+            width:72mm; height:102mm;
+            border:0.48mm solid #111;
+            padding:3.36mm 3.84mm;
             position:relative;
             overflow:hidden;
             background:#ffffff;
@@ -39,44 +39,44 @@
            NOTE: do NOT change this back to display:flex — flexbox does not
            lay out correctly in this system's wkhtmltopdf and the cards will
            stack vertically instead of sitting side by side. */
-        .idc-header{ overflow:hidden; margin:0 5mm 1.4mm 5mm; min-height:15.6mm; text-align:center; }
+        .idc-header{ overflow:hidden; margin:0 6mm 1.68mm 6mm; min-height:18.72mm; text-align:center; }
         .idc-logo-circle{
-            width:100%; height:15.6mm; border-radius:1mm;
-            border:0.3mm solid #999;
+            width:100%; height:18.72mm; border-radius:1.2mm;
+            border:0.36mm solid #999;
             display:inline-block; text-align:center; background:#fff; overflow:hidden;
         }
         .idc-logo-circle img{ width:100%; height:100%; object-fit:fill; }
-        .idc-logo-fallback{ font-size:7.5pt; font-weight:bold; line-height:15.6mm; }
+        .idc-logo-fallback{ font-size:9pt; font-weight:bold; line-height:18.72mm; }
         .idc-logo-fallback .hs-h{ color:#c96a4b; }
         .idc-logo-fallback .hs-s{ color:#2f6fb3; }
 
-        .idc-photo-wrap{ text-align:center; margin:0 5mm 4.3mm 5mm; }
+        .idc-photo-wrap{ text-align:center; margin:0 6mm 5.16mm 6mm; }
         .idc-photo{
-            width:22mm; height:25.6mm;
-            border:0.6mm solid #2f6fb3; border-radius:1mm;
+            width:26.4mm; height:30.72mm;
+            border:0.72mm solid #2f6fb3; border-radius:1.2mm;
             overflow:hidden; background:#f7f7f7; display:inline-block;
             position:relative;
         }
         .idc-photo .idc-photo-hint{
             position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-            font-size:6.4pt; color:#999; text-align:center; width:90%;
+            font-size:7.68pt; color:#999; text-align:center; width:90%;
         }
 
-        .idc-fields{ font-size:7.8pt; line-height:1.5; color:#111; margin:0 5mm; font-style:italic; }
+        .idc-fields{ font-size:9.36pt; line-height:1.5; color:#111; margin:0 6mm; font-style:italic; }
         .idc-fields b{ font-weight:800; }
         .idc-fields div{ white-space:nowrap; overflow:hidden; }
 
-        .idc-sign-row{ position:absolute; bottom:2.8mm; left:2.8mm; right:2.8mm; width:48.3mm; border-collapse:separate; border-spacing:5.7mm 0; }
+        .idc-sign-row{ position:absolute; bottom:3.36mm; left:3.36mm; right:3.36mm; width:57.96mm; border-collapse:separate; border-spacing:6.84mm 0; }
         .idc-sign-cell{ width:50%; text-align:center; }
-        .idc-sign-space{ height:5.7mm; }
-        .idc-sign-line{ border-top:0.3mm solid #111; }
-        .idc-sign-label{ font-size:6.4pt; font-style:italic; margin-top:0.7mm; color:#111; white-space:nowrap; }
+        .idc-sign-space{ height:6.84mm; }
+        .idc-sign-line{ border-top:0.36mm solid #111; }
+        .idc-sign-label{ font-size:7.68pt; font-style:italic; margin-top:0.84mm; color:#111; white-space:nowrap; }
 
-        .idc-legal{ font-size:7.1pt; line-height:1.35; text-align:justify; color:#111; margin-bottom:1.8mm; }
-        .idc-addr{ font-size:8.5pt; line-height:1.5; color:#111; }
+        .idc-legal{ font-size:8.52pt; line-height:1.35; text-align:justify; color:#111; margin-bottom:2.16mm; }
+        .idc-addr{ font-size:10.2pt; line-height:1.5; color:#111; }
         .idc-addr .label{ font-weight:700; }
-        .idc-personal{ font-size:8.5pt; line-height:1.55; margin-top:2.5mm; color:#111; }
-        .idc-personal .title{ font-weight:800; text-decoration:underline; margin-bottom:0.7mm; }
+        .idc-personal{ font-size:10.2pt; line-height:1.55; margin-top:3mm; color:#111; }
+        .idc-personal .title{ font-weight:800; text-decoration:underline; margin-bottom:0.84mm; }
     </style>
 
     <table class="idc-outer"><tr>
@@ -92,12 +92,12 @@
                      the very edges (outside the 5mm content margin used by
                      idc-header/idc-fields/idc-photo-wrap) so it no longer
                      overlaps the NAME field. -->
-                <svg width="5mm" height="79mm" viewBox="0 0 70 1120" style="position:absolute; left:1.1mm; top:2.8mm;">
+                <svg width="6mm" height="94.8mm" viewBox="0 0 70 1120" style="position:absolute; left:1.32mm; top:3.36mm;">
                     <text x="35" y="560" text-anchor="middle" transform="rotate(-90 35 560)"
                           font-size="34" font-style="italic" font-weight="bold" fill="#111"
                           font-family="Arial, Helvetica, sans-serif">Date of join: <t t-esc="doc.contract_date_start"/></text>
                 </svg>
-                <svg width="5mm" height="79mm" viewBox="0 0 70 1120" style="position:absolute; right:1.1mm; top:2.8mm;">
+                <svg width="6mm" height="94.8mm" viewBox="0 0 70 1120" style="position:absolute; right:1.32mm; top:3.36mm;">
                     <text x="35" y="560" text-anchor="middle" transform="rotate(90 35 560)"
                           font-size="34" font-style="italic" font-weight="bold" fill="#111"
                           font-family="Arial, Helvetica, sans-serif">Validity: <t t-esc="'Last Date of Job'"/></text>
@@ -124,7 +124,7 @@
                     <div><b>NAME:</b> <t t-esc="doc.name"/></div>
                     <div><b>ID NO:</b> <t t-esc="doc.zk_badge_no or doc.barcode or ''"/></div>
                     <div><b>DESIG:</b> <t t-esc="doc.job_title or (doc.job_id and doc.job_id.name) or ''"/></div>
-                    <div><b>SECTION:</b> <t t-esc="doc.department_id and doc.department_id.name or ''"/></div>
+                    <div><b>SECTION:</b> <t t-esc="doc.department_id.name.capitalize() if doc.department_id else ''"/></div>
                     <div><b>BLOOD GROUP:</b> <t t-esc="doc.blood_group"/></div>
                 </div>
 
@@ -187,25 +187,43 @@
 
     <!-- Single-badge-per-page report: bare card + forced page-break, wrapped once in html_container. -->
     <template id="report_id_card_page">
-        <div style="page-break-after: always; width:121mm;">
+        <div style="page-break-after: always; width:145.2mm;">
             <t t-call="woodland_attendance_extend.report_id_card_card"/>
         </div>
     </template>
 
     <record id="paperformat_id_card" model="report.paperformat">
-        <field name="name">ID Card (Front+Back side by side, 6.0cm x 8.5cm, foldable)</field>
+        <field name="name">ID Card (Front+Back side by side, 7.2cm x 10.2cm, foldable)</field>
         <field name="default" eval="False"/>
-        <field name="format">custom</field>
-        <field name="page_height">85</field>
-        <field name="page_width">121</field>
-        <field name="orientation">Landscape</field>
-        <field name="margin_top">0</field>
+        <!-- Card content itself stays 145x102mm (7.2x10.2cm per face, see
+             the report name above); it's now printed onto a full A4 sheet
+             instead of a page cut to the card's own size, with margin_top/
+             margin_left below giving it a small offset from the sheet's
+             edge. page_width/page_height must stay unset (0) here - Odoo's
+             report.paperformat forbids a named format together with
+             explicit custom dimensions (_check_format_or_page). -->
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <!-- format=custom previously needed orientation='Portrait' here to
+             avoid a page_width/page_height swap bug (see git history) -
+             that swap only applies to custom dimensions, not a named
+             format like A4, so it doesn't affect this.
+             wkhtmltopdf's smart-shrinking is on by default and auto-fits
+             content non-1:1, which is why dpi alone never fixed the
+             physical scale either (Odoo auto-counters dpi with an equal
+             and opposite zoom flag, see
+             ir_actions_report._build_wkhtmltopdf_args - dpi only affects
+             raster sharpness here, not layout size). -->
+        <field name="orientation">Portrait</field>
+        <field name="disable_shrinking" eval="True"/>
+        <field name="margin_top">3</field>
         <field name="margin_bottom">0</field>
-        <field name="margin_left">0</field>
+        <field name="margin_left">3</field>
         <field name="margin_right">0</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
-        <field name="dpi">96</field>
+        <field name="dpi">120</field>
     </record>
 
     <record id="action_report_hr_id_card" model="ir.actions.report">
@@ -220,18 +238,18 @@
         <field name="paperformat_id" ref="paperformat_id_card"/>
     </record>
 
-    <!-- ============ A4 sheet: 4 badges per page (2 columns x 2 rows)
-         ============
-         Each unit is 121mm wide (front+back side by side) x 85mm tall.
-         On PORTRAIT A4 the usable width is only ~200mm, so just ONE unit
-         fit per row and every row wasted ~75mm of paper. Landscape A4
-         gives ~287mm usable width, which fits exactly 2 units side by
-         side (2 x 126mm = 252mm) x 2 rows (2 x 91mm = 182mm <= ~190mm
-         usable height) = 4 per page, no wasted row. -->
+    <!-- ============ A4 sheet: cards laid out via inline-block flow, wrapping
+         to fit as many as the page allows ============
+         Each unit is now 145.2mm wide (front+back side by side) x 102mm
+         tall - 120% of the original 121mm x 85mm. NOTE: at this larger
+         size two units side by side (2 x 145.2mm = 290.4mm) no longer fit
+         within landscape A4's ~287mm usable width, so this sheet now packs
+         fewer than the original 4 per page - the layout below just flows
+         and wraps whatever fits, it does not force a fixed grid. -->
     <template id="report_id_card_a4_document">
         <t t-call="web.html_container">
         <t t-foreach="docs" t-as="doc">
-            <div style="width:121mm; height:85mm; display:inline-block; margin:0 5mm 6mm 0; vertical-align:top;">
+            <div style="width:145.2mm; height:102mm; display:inline-block; margin:0 6mm 7.2mm 0; vertical-align:top;">
                 <t t-call="woodland_attendance_extend.report_id_card_card"/>
             </div>
         </t>
@@ -243,13 +261,14 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Landscape</field>
+        <field name="disable_shrinking" eval="True"/>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">5</field>
         <field name="margin_right">5</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
-        <field name="dpi">96</field>
+        <field name="dpi">120</field>
     </record>
 
     <record id="action_report_hr_id_card_a4" model="ir.actions.report">
@@ -269,59 +288,80 @@
          employee inside the outer one, which wkhtmltopdf renders as a
          blank page (see the id-card template above for the same lesson).
 
-         This report is intentionally NOT bound to a specific hr.employee
-         record any more (no binding_model_id, no t-foreach="docs") - it's
-         a blank fillable form that never actually used employee data (every
-         one of its 22 fields is a plain "Insert Field Here" placeholder),
-         so requiring a record to print it made no sense. It always renders
-         exactly one page, regardless of what docs/res_ids it's called with -
-         reachable via the "Print Approval Sheet" menu item, which opens the
-         signatory wizard (hr.approval.sheet.wizard) directly. -->
+         This report is bound to hr.employee.approval (the Employee
+         Approval Sheet model — see models/employee_approval.py). Each
+         selected record renders as its own page (t-foreach="docs"),
+         populated from that record's fields instead of blank
+         "Insert Field Here" placeholders. Reachable via the "Print
+         Approval Sheet" action (opens the signatory wizard,
+         hr.approval.sheet.wizard) or directly via the Print menu on the
+         Employee Approval Sheet form/list. -->
     <template id="report_approval_sheet">
         <t t-call="web.html_container">
             <t t-set="company" t-value="env.company"/>
             <div class="article">
-                <div class="page approval-sheet p-4" style="font-family:Arial, sans-serif; line-height:1.5; color:#000; font-size:16px;">
+                <t t-foreach="docs" t-as="o">
+                <div class="page approval-sheet" style="font-family:Arial, sans-serif; line-height:1.5; color:#000; font-size:18px; padding:16px 8px;">
 
                     <style>
-                        .approval-sheet .value { border-bottom: 1px dotted #000; height: 26px; }
-                        .approval-sheet .num, .approval-sheet .colon { white-space: nowrap; }
-                        .approval-sheet .label { white-space: nowrap; }
-                        .approval-sheet td { vertical-align: bottom; }
+                        /* Every cell gets a real border (table already has
+                           border-collapse:collapse), so grid lines are
+                           shared between adjacent cells and stay perfectly
+                           continuous across the whole sheet regardless of
+                           row height - no more per-row height/nowrap
+                           tricks needed to keep a border-bottom "landing"
+                           at the same spot on every row. */
+                        .approval-sheet .value { font-size: 17px; }
+                        .approval-sheet .num, .approval-sheet .colon { white-space: nowrap; font-size: 17px; }
+                        .approval-sheet .colon { text-align: center; }
+                        .approval-sheet .label { white-space: normal; line-height: 1.2; font-size: 17px; }
+                        .approval-sheet td { vertical-align: middle; padding: 8px 10px; border: 1px solid #000; }
                     </style>
 
-                    <div class="text-center mb-3">
+                    <div style="text-align:center; margin-bottom:12px;">
                         <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
                              style="max-height:90px; max-width:320px;" alt="Company Logo"/>
-                        <h2 t-else="" class="fw-bold mb-0"><t t-esc="company.name or 'H &amp; S Glassware Ltd'"/></h2>
-                        <p class="mb-0 fs-6">150, Moshan, Mirpur, Kushtia.</p>
+                        <h2 t-else="" style="font-weight:bold; margin:0;"><t t-esc="company.name or 'H &amp; S Glassware Ltd'"/></h2>
+                        <p style="margin:0; font-size:15px;">150, Moshan, Mirpur, Kushtia.</p>
                     </div>
 
-                    <h4 class="text-center fw-bold text-decoration-underline my-4">Employment Approval Note Sheet</h4>
+                    <h4 style="text-align:center; font-weight:bold; margin:16px 0;">Employment Approval Note Sheet</h4>
 
-                    <div class="text-end mb-4">
-                        Date: <span class="d-inline-block border-bottom" style="width:150px;">&#160;</span>
+                    <div style="text-align:right; margin-bottom:16px;">
+                        Date: <span style="display:inline-block; width:150px; text-align:left; padding-left:6px;" t-esc="print_date"/>
                     </div>
 
-                    <table class="table table-borderless w-100 mb-0" style="table-layout: fixed;">
+                    <!-- Odoo's Bootstrap CSS is not loaded here (this report only
+                         calls web.html_container, not a layout that pulls in
+                         Bootstrap), so table/border/spacing/text utility classes
+                         like table-borderless, w-100, border-top, fw-bold, p-4
+                         silently do nothing under wkhtmltopdf - everything below
+                         uses plain inline styles instead. -->
+                    <table style="width:100%; table-layout:fixed; border-collapse:collapse;">
                         <colgroup>
-                            <col style="width: 3%;"/> <!-- Left Number -->
-                            <col style="width: 25%;"/> <!-- Left Label -->
+                            <!-- Left Label trimmed to 22% (border sits right after
+                                 the label instead of leaving a big empty gap) and
+                                 that width handed to Left Value (14% -> 21%, now
+                                 close to Right Value's 22%). Labels wrap (see
+                                 .approval-sheet .label below) so nothing clips
+                                 against the tighter column. -->
+                            <col style="width: 5%;"/> <!-- Left Number -->
+                            <col style="width: 22%;"/> <!-- Left Label -->
                             <col style="width: 2%;"/> <!-- Left Colon -->
-                            <col style="width: 20%;"/> <!-- Left Value -->
+                            <col style="width: 21%;"/> <!-- Left Value -->
 
-                            <col style="width: 3%;"/> <!-- Right Number -->
-                            <col style="width: 20%;"/> <!-- Right Label -->
+                            <col style="width: 5%;"/> <!-- Right Number -->
+                            <col style="width: 21%;"/> <!-- Right Label -->
                             <col style="width: 2%;"/> <!-- Right Colon -->
-                            <col style="width: 25%;"/> <!-- Right Value -->
+                            <col style="width: 22%;"/> <!-- Right Value -->
                         </colgroup>
 
-                        <tr class="py-2">
+                        <tr>
                             <td class="num">1.</td>
                             <td class="label">Applicant Name</td>
                             <td class="colon">:</td>
                             <td class="value" colspan="5">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.name"/>
                             </td>
                         </tr>
                         <tr>
@@ -329,7 +369,7 @@
                             <td class="label">Father's Name</td>
                             <td class="colon">:</td>
                             <td class="value" colspan="5">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.father_name"/>
                             </td>
                         </tr>
                         <tr>
@@ -337,7 +377,7 @@
                             <td class="label">Mother's Name</td>
                             <td class="colon">:</td>
                             <td class="value" colspan="5">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.mother_name"/>
                             </td>
                         </tr>
 
@@ -346,13 +386,13 @@
                             <td class="label">Permanent Add, Vill</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.permanent_address"/>
                             </td>
                             <td class="num">14.</td>
                             <td class="label">Present Add, Vill</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.present_address"/>
                             </td>
                         </tr>
 
@@ -361,13 +401,13 @@
                             <td class="label">Post Office</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.permanent_post_office"/>
                             </td>
                             <td class="num">15.</td>
                             <td class="label">Post Office</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.present_post_office"/>
                             </td>
                         </tr>
 
@@ -376,13 +416,13 @@
                             <td class="label">Thana</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.permanent_thana"/>
                             </td>
                             <td class="num">16.</td>
                             <td class="label">Thana</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.present_thana"/>
                             </td>
                         </tr>
 
@@ -391,13 +431,13 @@
                             <td class="label">District</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.permanent_district"/>
                             </td>
                             <td class="num">17.</td>
                             <td class="label">District</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.present_district"/>
                             </td>
                         </tr>
 
@@ -406,45 +446,45 @@
                             <td class="label">Date Of Birth</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.date_of_birth"/>
                             </td>
                             <td class="num">18.</td>
                             <td class="label">Present Age</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.present_age"/>
                             </td>
                         </tr>
 
                         <tr>
                             <td class="num">9.</td>
-                            <td class="label">Educational Qualification</td>
+                            <td class="label">Educational<br/>Qualification</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.educational_qualification"/>
                             </td>
                             <td class="num">19.</td>
                             <td class="label">Mobile No</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.mobile_no"/>
                             </td>
                         </tr>
 
                         <tr>
                             <td class="num">10.</td>
-                            <td class="label" style="white-space: normal; line-height: 1.2;">
-                                10. Section where<br/>recruitment is required
+                            <td class="label">
+                                Section where<br/>recruitment is required
                             </td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-esc="o.department_id.name.capitalize() if o.department_id else ''"/>
                             </td>
                             <td class="num">20.</td>
                             <td class="label">Introducer</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.introducer"/>
                             </td>
                         </tr>
 
@@ -453,13 +493,13 @@
                             <td class="label">Applied Position</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.applied_job_id"/>
                             </td>
                             <td class="num">21.</td>
                             <td class="label">Approved Position</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.approved_job_id"/>
                             </td>
                         </tr>
 
@@ -468,13 +508,13 @@
                             <td class="label">Applied Salary</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.applied_salary"/>
                             </td>
                             <td class="num">22.</td>
                             <td class="label">Approved Salary</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.approved_salary"/>
                             </td>
                         </tr>
 
@@ -483,13 +523,13 @@
                             <td class="label">Examination Result</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.examination_result"/>
                             </td>
-                            <td class="num"></td>
+                            <td class="num">23.</td>
                             <td class="label">Joining Date</td>
                             <td class="colon">:</td>
                             <td class="value">
-                                <!-- Insert Field Here -->
+                                <span t-field="o.joining_date"/>
                             </td>
                         </tr>
                     </table>
@@ -501,17 +541,33 @@
                          report.woodland_attendance_extend.report_approval_sheet
                          (models/report_approval_sheet.py) for the defaults.
                          No box/border around them - just a plain rule line above
-                         each name, matching a physically-signed paper form. -->
-                    <table class="table table-borderless w-100 mt-5" style="margin-top:170px; table-layout: fixed;">
-                        <tr>
-                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_1 or 'Sr. Manager'"/>
-                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_2 or 'D.G.M (Production)'"/>
-                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_3 or 'General Manager'"/>
-                            <td class="text-center border-top pt-2 fw-bold" t-esc="approval_sign_4 or 'Managing Director'"/>
-                        </tr>
-                    </table>
+                         each name, matching a physically-signed paper form.
+
+                         NOTE: no <table> here on purpose - table-layout:fixed
+                         column widths (with either border-spacing or plain
+                         collapse) proved unreliable for this row under this
+                         system's wkhtmltopdf, pushing "General Manager" (3rd,
+                         longer text) out of alignment. float:left divs are
+                         used instead of flexbox, since flexbox does not lay
+                         out correctly in this system's wkhtmltopdf either
+                         (see the id-card template's idc-header note above). -->
+                    <div style="margin-top:180px; overflow:hidden;">
+                        <div style="width:25%; float:left; box-sizing:border-box; padding:0 20px; text-align:center;">
+                            <div style="border-top:1px solid #000; padding-top:6px; font-weight:bold;" t-esc="approval_sign_1 or 'Sr. Manager'"/>
+                        </div>
+                        <div style="width:25%; float:left; box-sizing:border-box; padding:0 20px; text-align:center;">
+                            <div style="border-top:1px solid #000; padding-top:6px; font-weight:bold;" t-esc="approval_sign_2 or 'D.G.M (Production)'"/>
+                        </div>
+                        <div style="width:25%; float:left; box-sizing:border-box; padding:0 20px; text-align:center;">
+                            <div style="border-top:1px solid #000; padding-top:6px; font-weight:bold;" t-esc="approval_sign_3 or 'General Manager'"/>
+                        </div>
+                        <div style="width:25%; float:left; box-sizing:border-box; padding:0 20px; text-align:center;">
+                            <div style="border-top:1px solid #000; padding-top:6px; font-weight:bold;" t-esc="approval_sign_4 or 'Managing Director'"/>
+                        </div>
+                    </div>
 
                 </div>
+                </t>
             </div>
         </t>
     </template>
@@ -523,8 +579,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">15</field>
         <field name="margin_bottom">15</field>
-        <field name="margin_left">15</field>
-        <field name="margin_right">15</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -532,12 +588,12 @@
 
     <record id="action_report_approval_sheet" model="ir.actions.report">
         <field name="name">Employment Approval Note Sheet</field>
-        <field name="model">hr.employee</field>
+        <field name="model">hr.employee.approval</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">woodland_attendance_extend.report_approval_sheet</field>
         <field name="report_file">woodland_attendance_extend.report_approval_sheet</field>
         <field name="print_report_name">'Approval Sheet - %s' % (object.name)</field>
-        <field name="binding_model_id" ref="hr.model_hr_employee"/>
+        <field name="binding_model_id" ref="model_hr_employee_approval"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="paperformat_approval_sheet"/>
     </record>

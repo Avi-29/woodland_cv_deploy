@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Generic ir.attachment kanban with click-to-preview, used by the
+         Employee "Documents" smart button. Pattern mirrors Odoo core's own
+         product.document kanban (product/views/product_document_views.xml):
+         can_open="0" turns off the default open-form-on-click behaviour,
+         and the woodland_documents_kanban js_class opens the file viewer
+         (image/pdf/video/text) instead when clicking the thumbnail. -->
+    <record id="view_ir_attachment_kanban_woodland_documents" model="ir.ui.view">
+        <field name="name">ir.attachment.kanban.woodland.documents</field>
+        <field name="model">ir.attachment</field>
+        <field name="arch" type="xml">
+            <kanban js_class="woodland_documents_kanban" can_open="0" default_group_by="document_section">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="mimetype"/>
+                <field name="type"/>
+                <field name="url"/>
+                <field name="create_date"/>
+                <field name="document_section"/>
+                <templates>
+                    <t t-name="menu">
+                        <a t-attf-href="/web/content/#{record.id.raw_value}?download=true" download="" class="dropdown-item">Download</a>
+                        <a t-if="widget.deletable" role="menuitem" type="delete" class="dropdown-item">Delete</a>
+                    </t>
+                    <t t-name="card" class="o_kanban_attachment flex-row">
+                        <aside class="o_kanban_image m-2">
+                            <t t-set="webimage" t-value="new RegExp('image.*(gif|jpeg|jpg|png|webp)').test(record.mimetype.value)"/>
+                            <t t-set="previewable"
+                               t-value="new RegExp('(image|video|application/pdf|text)').test(record.mimetype.value) &amp;&amp; record.type.raw_value === 'binary'"/>
+                            <div t-attf-class="o_kanban_image_wrapper #{(webimage or previewable) ? 'o_kanban_previewer' : ''}">
+                                <div t-if="record.type.raw_value == 'url'" class="fa fa-link fa-3x text-muted" aria-label="Document is a link"/>
+                                <img t-elif="webimage" t-attf-src="/web/image/#{record.id.raw_value}/100x100" width="100" height="100" alt="Document" class="o_attachment_image"/>
+                                <div t-else="" class="o_image o_image_thumbnail" t-att-data-mimetype="record.mimetype.value"/>
+                            </div>
+                        </aside>
+                        <main class="ms-2 p-2">
+                            <field name="name" class="fw-bolder fs-5 text-truncate"/>
+                            <field t-if="record.type.raw_value == 'url'" name="url" widget="url"/>
+                            <div class="text-muted">
+                                <field name="create_date"/>
+                            </div>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+</odoo>

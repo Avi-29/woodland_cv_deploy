@@ -313,6 +313,36 @@
                             </tr>
                         </table>
                     </t>
+
+                    <t t-if="slip.last_month_due or slip.penalty_amount or slip.advance_amount">
+                        <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                            <tr style="background:#f5f5f5;">
+                                <td style="padding:5px 8px; border:1px solid #ddd; width:34%;">
+                                    Last Month Due
+                                </td>
+                                <td style="padding:5px 8px; border:1px solid #ddd; text-align:right; color:#27ae60; width:16%;">
+                                    + <t t-esc="'{:,.2f}'.format(slip.last_month_due)"/>
+                                </td>
+                                <td style="padding:5px 8px; border:1px solid #ddd; width:34%;">
+                                    Penalty
+                                </td>
+                                <td style="padding:5px 8px; border:1px solid #ddd; text-align:right; color:#c0392b; width:16%;">
+                                    - <t t-esc="'{:,.2f}'.format(slip.penalty_amount)"/>
+                                </td>
+                            </tr>
+                            <tr style="background:#f5f5f5;">
+                                <td style="padding:5px 8px; border:1px solid #ddd;">
+                                    Advance Payment
+                                </td>
+                                <td style="padding:5px 8px; border:1px solid #ddd; text-align:right; color:#c0392b;">
+                                    - <t t-esc="'{:,.2f}'.format(slip.advance_amount)"/>
+                                </td>
+                                <td style="border:1px solid #ddd;"></td>
+                                <td style="border:1px solid #ddd;"></td>
+                            </tr>
+                        </table>
+                    </t>
+
 <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
                         <tr>
                             <td style="padding:8px 12px; border:2px solid #2E4057; background:#eef2f7; width:25%;">

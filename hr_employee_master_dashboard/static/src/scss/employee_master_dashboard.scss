@@ -1,0 +1,270 @@
+// ─── Employee Dashboard (KPIs + charts) – SCSS ─────────────────────────────
+
+$pri:      #2a78d6; // categorical slot 1 — neutral/primary accent
+$pri-lt:   #cde2fb;
+$border:   #e2e8f0;
+$radius:   8px;
+$shadow:   0 1px 4px rgba(0,0,0,.07);
+
+// Status roles (reserved — never reused for generic series identity)
+$good:     #0ca30c;
+$good-lt:  #e3f7e3;
+$critical: #d03b3b;
+$critical-lt: #fbe6e6;
+$warning:  #fab219;
+$warning-lt: #fef3dd;
+$aqua:     #1baf7a;
+$aqua-lt:  #dff6ec;
+$violet:   #4a3aa7;
+$violet-lt: #e9e5f7;
+$slate:    #64748b; // data-quality / neutral-negative flags (e.g. "no badge")
+$slate-lt: #eef1f5;
+
+// ── Odoo Container Alignment ──────────────────────────────────────────────
+.o_action_manager,
+.o_action,
+.o_content {
+    height: 100% !important;
+}
+
+// ── Root wrapper ────────────────────────────────────────────────────────────
+.emd_wrapper {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #f8fafc;
+
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    padding: 18px 22px 32px;
+    box-sizing: border-box;
+    color: #1e293b;
+}
+
+// ── Header ───────────────────────────────────────────────────────────────
+.emd_header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 14px 18px; margin-bottom: 14px; box-shadow: $shadow;
+    flex-shrink: 0;
+}
+.emd_header_left { display: flex; align-items: center; gap: 10px; }
+.emd_title_icon   { font-size: 22px; }
+.emd_title    { margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; }
+.emd_subtitle { font-size: 11.5px; color: #64748b; }
+
+// ── Toolbar ──────────────────────────────────────────────────────────────
+.emd_toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 10px 14px; margin-bottom: 14px; box-shadow: $shadow;
+    flex-shrink: 0;
+}
+.emd_label {
+    display: block; font-size: 10.5px; font-weight: 600;
+    color: #64748b; text-transform: uppercase; letter-spacing: .5px;
+    margin-bottom: 3px;
+}
+.emd_select {
+    padding: 6px 9px; border: 1px solid $border; border-radius: 6px;
+    font-size: 13px; background: #fff; color: #1e293b; min-width: 140px;
+    &:focus { outline: none; border-color: $pri; box-shadow: 0 0 0 2px $pri-lt; }
+}
+
+// ── Loading / Empty ───────────────────────────────────────────────────────
+.emd_loading {
+    display: flex; align-items: center; gap: 8px;
+    padding: 40px; justify-content: center; color: #64748b; font-size: 14px;
+}
+.emd_spinner {
+    width: 20px; height: 20px;
+    border: 3px solid #e2e8f0; border-top-color: $pri;
+    border-radius: 50%; animation: emd_spin .7s linear infinite;
+}
+@keyframes emd_spin { to { transform: rotate(360deg); } }
+.emd_empty { text-align: center; padding: 50px; color: #64748b; font-size: 14px; }
+.emd_empty_icon { display: block; font-size: 36px; margin-bottom: 8px; }
+.emd_chart_empty { padding: 30px; text-align: center; color: #94a3b8; font-size: 12.5px; }
+
+// ── Clickable affordance — every drill-down card/row shares this ───────────
+.emd_clickable {
+    cursor: pointer;
+    &:hover { box-shadow: 0 6px 16px rgba(15, 23, 42, .12); }
+    &:active { transform: translateY(0); }
+}
+
+// ── Hero — Present Today ─────────────────────────────────────────────────────
+.emd_hero {
+    display: flex; align-items: center; gap: 26px;
+    background: linear-gradient(135deg, #ffffff 0%, #f2f7fd 100%);
+    border: 1px solid $border; border-radius: 14px;
+    padding: 20px 28px; margin-bottom: 18px;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, .07);
+    flex-shrink: 0;
+}
+.emd_hero_ring {
+    width: 108px; height: 108px; min-width: 108px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .5s ease;
+}
+.emd_hero_ring_inner {
+    width: 82px; height: 82px; border-radius: 50%; background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .05);
+}
+.emd_hero_ring_pct { font-size: 19px; font-weight: 800; color: #0f172a; line-height: 1; }
+.emd_hero_ring_label {
+    font-size: 9px; color: #64748b; text-transform: uppercase;
+    letter-spacing: .6px; margin-top: 3px;
+}
+.emd_hero_body {
+    display: flex; flex-direction: column; min-width: 0;
+    border-radius: 10px; padding: 4px 8px; margin: -4px -8px;
+    transition: background .15s ease;
+    &.emd_clickable:hover { background: rgba(15, 23, 42, .04); }
+}
+.emd_hero_value { font-size: 42px; font-weight: 800; color: #0f172a; line-height: 1; }
+.emd_hero_label { font-size: 14.5px; font-weight: 700; color: #1e293b; margin-top: 4px; }
+.emd_hero_sub { font-size: 12.5px; color: #64748b; margin-top: 6px; }
+.emd_hero_chip { margin-left: 3px; color: #475569; }
+
+// ── Section titles (group KPI cards into Today / Workforce / Badges) ───────
+.emd_section_title {
+    font-size: 11px; font-weight: 800; color: #64748b;
+    text-transform: uppercase; letter-spacing: .7px;
+    margin: 2px 2px 8px; flex-shrink: 0;
+}
+
+// ── KPI cards ──────────────────────────────────────────────────────────────
+.emd_kpi_row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-shrink: 0;
+}
+.emd_kpi_card {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 14px 16px; box-shadow: $shadow;
+    transition: transform .15s ease, box-shadow .15s ease;
+    &:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15, 23, 42, .09); }
+}
+.emd_kpi_icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 10px; font-size: 19px;
+    flex-shrink: 0;
+}
+.emd_kpi_body { min-width: 0; }
+.emd_kpi_value {
+    font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.1;
+    font-variant-numeric: normal;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.emd_kpi_label {
+    font-size: 11.5px; color: #64748b; margin-top: 2px;
+}
+.emd_kpi_sub {
+    font-size: 10.5px; color: #94a3b8; margin-top: 1px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+// Tone → icon background only; text stays ink (never colored text)
+.emd_tone_neutral  .emd_kpi_icon { background: $pri-lt; }
+.emd_tone_good     .emd_kpi_icon { background: $good-lt; }
+.emd_tone_critical .emd_kpi_icon { background: $critical-lt; }
+.emd_tone_warning  .emd_kpi_icon { background: $warning-lt; }
+.emd_tone_aqua     .emd_kpi_icon { background: $aqua-lt; }
+.emd_tone_violet   .emd_kpi_icon { background: $violet-lt; }
+.emd_tone_slate    .emd_kpi_icon { background: $slate-lt; }
+
+// ── Charts row ─────────────────────────────────────────────────────────────
+.emd_charts_row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 14px;
+}
+.emd_chart_card {
+    background: #fff; border: 1px solid $border; border-radius: $radius;
+    padding: 16px 18px; box-shadow: $shadow;
+    display: flex; flex-direction: column;
+}
+.emd_chart_head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+}
+.emd_chart_title { font-size: 13px; font-weight: 700; color: #0f172a; }
+
+// Legend — always present for ≥2 series, never color-alone identity
+.emd_legend { display: flex; gap: 12px; flex-wrap: wrap; }
+.emd_legend_item {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: #475569;
+}
+.emd_swatch {
+    display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+}
+.emd_swatch_good     { background: $good; }
+.emd_swatch_critical  { background: $critical; }
+.emd_swatch_warning  { background: $warning; }
+
+// ── Grouped bar chart (present/absent/leave by worker type) ────────────────
+.emd_bar_plot {
+    display: flex; justify-content: center; align-items: flex-end;
+    gap: 48px; height: 180px; padding: 0 8px;
+}
+.emd_bar_group {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    height: 100%; justify-content: flex-end;
+}
+.emd_bar_group_bars {
+    display: flex; align-items: flex-end; gap: 4px; height: 150px;
+}
+.emd_bar_col_wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    height: 100%; gap: 4px;
+}
+.emd_bar_col {
+    width: 22px; min-height: 2px;
+    border-radius: 4px 4px 0 0;
+}
+.emd_bar_good     { background: $good; }
+.emd_bar_critical { background: $critical; }
+.emd_bar_warning  { background: $warning; }
+.emd_bar_value {
+    font-size: 11px; font-weight: 700; color: #334155;
+}
+.emd_bar_group_label {
+    font-size: 12px; font-weight: 600; color: #475569;
+}
+
+// ── Horizontal bar chart (headcount by department) ──────────────────────────
+.emd_hbar_plot {
+    display: flex; flex-direction: column; gap: 10px;
+}
+.emd_hbar_row {
+    display: grid;
+    grid-template-columns: 120px 1fr 110px;
+    align-items: center; gap: 10px;
+    border-radius: 6px; padding: 3px 6px; margin: 0 -6px;
+    transition: background .15s ease;
+    &.emd_clickable:hover { background: #f1f5f9; }
+}
+.emd_hbar_label {
+    font-size: 12px; color: #334155;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.emd_hbar_track {
+    background: #f1f5f9; border-radius: 4px; height: 18px; overflow: hidden;
+}
+.emd_hbar_fill {
+    height: 100%; min-width: 2px;
+    background: $pri; border-radius: 4px;
+}
+.emd_hbar_value {
+    font-size: 12px; font-weight: 700; color: #334155; text-align: right;
+    font-variant-numeric: tabular-nums;
+}

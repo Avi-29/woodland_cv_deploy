@@ -71,6 +71,7 @@
                                string="Month"
                                options="{'min_precision': 'months'}"
                                required="1"/>
+                        <field name="recompute_existing"/>
                     </group>
                 </sheet>
                 <footer>
@@ -134,6 +135,48 @@
     <record id="action_import_payslips_wizard" model="ir.actions.act_window">
         <field name="name">Import Payslips from Excel</field>
         <field name="res_model">payroll.import.payslips.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+
+    <!-- ================================================================ -->
+    <!-- Last Month / Penalty / Advance Export Wizard                      -->
+    <!-- ================================================================ -->
+    <record id="view_last_month_penalty_advance_wizard_form" model="ir.ui.view">
+        <field name="name">payroll.last.month.penalty.advance.wizard.form</field>
+        <field name="model">payroll.last.month.penalty.advance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Last Month / Penalty / Advance">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>Export Last Month / Penalty / Advance</h2>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        Select a payroll month to download a badge-id-wise Excel report
+                        of Last Month Due, Penalty, and Advance Payment, summed directly
+                        from the adjustment entries recorded for that month.
+                    </div>
+                    <group>
+                        <field name="export_month"
+                               string="Month"
+                               options="{'min_precision': 'months'}"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Download Excel"
+                            name="action_export"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_last_month_penalty_advance_wizard" model="ir.actions.act_window">
+        <field name="name">Export Last Month / Penalty / Advance</field>
+        <field name="res_model">payroll.last.month.penalty.advance.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
@@ -233,11 +276,14 @@
                                 </group>
                             </group>
                             <group>
-                                <group string="Net Pay">
+                <group string="Net Pay">
                                     <field name="gross_salary"     readonly="1"/>
                                     <field name="overtime_pay"     readonly="1"/>
                                     <field name="total_deductions" readonly="1"/>
                                     <field name="attendance_bonus" readonly="1"/>
+                                    <field name="last_month_due"   readonly="1"/>
+                                    <field name="penalty_amount"   readonly="1"/>
+                                    <field name="advance_amount"   readonly="1"/>
                                     <field name="net_salary"       readonly="1"/>
                                 </group>
                             </group>
@@ -288,6 +334,9 @@
                 <field name="absent_days"            optional="hide"/>
                 <field name="gross_salary"      sum="Total Gross"/>
                 <field name="total_deductions"  sum="Total Deductions"/>
+                <field name="last_month_due"    sum="Total Last Month" optional="hide"/>
+                <field name="penalty_amount"    sum="Total Penalty" optional="hide"/>
+                <field name="advance_amount"    sum="Total Advance" optional="hide"/>
                 <field name="net_salary"        sum="Total Net"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'paid'"

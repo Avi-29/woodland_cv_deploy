@@ -37,7 +37,8 @@
                 <group string="Report Filters">
                     <field name="report_date"/>
                     <field name="department_id" placeholder="All Departments"/>
-                    <field name="gender" placeholder="All Genders"/>
+                    <field name="shift_id" placeholder="All Shifts"/>
+                    <field name="sex" placeholder="All Genders"/>
                 </group>
                 <footer>
                     <button string="Generate &amp; Download"

@@ -6,7 +6,7 @@
     <field name="model">hr.approval.sheet.wizard</field>
     <field name="arch" type="xml">
         <form string="Approval Sheet Signatories">
-            <p>Enter who signs each of the 4 slots on this employee's Approval Sheet.</p>
+            <p>Enter who signs each of the 4 slots on this Approval Sheet.</p>
             <group>
                 <field name="sign_1"/>
                 <field name="sign_2"/>
@@ -27,7 +27,7 @@
     <field name="res_model">hr.approval.sheet.wizard</field>
     <field name="view_mode">form</field>
     <field name="target">new</field>
-    <field name="binding_model_id" ref="hr.model_hr_employee"/>
+    <field name="binding_model_id" ref="model_hr_employee_approval"/>
     <field name="binding_type">action</field>
 </record>
 

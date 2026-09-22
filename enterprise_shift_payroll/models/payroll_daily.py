@@ -165,6 +165,106 @@ class DailyPayroll(models.Model):
 
 
 # ─────────────────────────────────────────────
+#  Daily Worker — Last Week Adjustment
+# ─────────────────────────────────────────────
+
+class DailyPayrollAdjustment(models.Model):
+    """Extra amount added to a daily-wage worker's weekly net pay, e.g. days
+    or hours worked last week that weren't captured in daily.payroll yet.
+
+    Mirrors payroll.adjustment's shape (value-matched to a period rather than
+    linked by id, auto-computed amount, a get_*_totals helper the report reads
+    from) but scoped to a week instead of a month, and always additive — there
+    is no penalty/advance/pending-capping concept here.
+    """
+    _name = 'daily.payroll.adjustment'
+    _description = 'Daily Worker Last Week Adjustment'
+    _order = 'week_date desc, employee_id, id'
+
+    employee_id = fields.Many2one(
+        'hr.employee', string='Employee', required=True, index=True,
+        domain=[('salary_type', '=', 'daily')])
+    company_id = fields.Many2one(
+        'res.company', string='Company', default=lambda self: self.env.company)
+
+    week_date = fields.Date(
+        string='Week', required=True,
+        default=lambda self: fields.Date.context_today(self) - timedelta(
+            days=(fields.Date.context_today(self).weekday() - 3) % 7),
+        help="Thursday of the week this adjustment applies to.",
+    )
+
+    calc_type = fields.Selection([
+        ('day', 'Day Count'),
+        ('hour', 'Hour'),
+    ], string='Type', required=True, default='day')
+
+    quantity = fields.Float(
+        string='Quantity (Days / Hours)', digits=(16, 2),
+        help="Number of days (Day Count) or hours (Hour) being added.",
+    )
+    amount = fields.Float(
+        string='Amount', digits=(16, 0), readonly=True, default=0.0,
+        help="Auto-calculated: Day Count = quantity × daily wage. "
+             "Hour = quantity × (daily wage ÷ 8).",
+    )
+    date = fields.Date(string='Entry Date', default=fields.Date.context_today)
+    note = fields.Char(string='Reason / Note')
+
+    @api.onchange('week_date')
+    def _onchange_week_date(self):
+        if self.week_date:
+            self.week_date = self.week_date - timedelta(days=(self.week_date.weekday() - 3) % 7)
+
+    @api.onchange('employee_id', 'calc_type', 'quantity')
+    def _onchange_quantity(self):
+        self.amount = self._compute_amount(self.employee_id, self.calc_type, self.quantity)
+
+    @api.model
+    def _compute_amount(self, employee, calc_type, quantity):
+        if not employee or not quantity:
+            return 0.0
+        daily_wage = employee.daily_wage or 0.0
+        if calc_type == 'hour':
+            return (daily_wage / 8.0) * quantity
+        return quantity * daily_wage
+
+    def _sync_amount(self):
+        for rec in self:
+            amount = rec._compute_amount(rec.employee_id, rec.calc_type, rec.quantity)
+            if amount != rec.amount:
+                rec.amount = amount
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._sync_amount()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if any(f in vals for f in ('employee_id', 'calc_type', 'quantity')):
+            self._sync_amount()
+        return res
+
+    @api.model
+    def get_week_totals(self, week_thursday):
+        """Sum this week's adjustment amounts per employee, keyed by employee_id.
+
+        week_thursday must already be normalized to the Thursday of the week
+        (see WeeklyPayrollExcelWizard._week_range).
+        """
+        if not week_thursday:
+            return {}
+        groups = self.read_group(
+            domain=[('week_date', '=', week_thursday)],
+            fields=['amount:sum'],
+            groupby=['employee_id'],
+        )
+        return {g['employee_id'][0]: g['amount'] for g in groups if g['employee_id']}
+
+
+# ─────────────────────────────────────────────
 #  Daily Excel Report Wizard
 # ─────────────────────────────────────────────
 
@@ -172,12 +272,12 @@ class DailyPayrollExcelWizard(models.TransientModel):
     _name  = 'daily.payroll.excel.wizard'
     _description = 'Daily Payroll Excel Report Wizard'
 
-    report_date   = fields.Date(required=True, default=fields.Date.today, string='Report Date')
+    report_date   = fields.Date(required=True, default=lambda self: self._dhaka_today(), string='Report Date')
     department_id = fields.Many2one('hr.department', string='Department',
                                     help='Leave empty to include all departments')
     shift_id      = fields.Many2one('hr.shift', string='Shift',
                                     help='Leave empty for all shifts')
-    gender        = fields.Selection([
+    sex           = fields.Selection([
         ('male', 'Male'),
         ('female', 'Female'),
         ('other', 'Other'),
@@ -186,22 +286,41 @@ class DailyPayrollExcelWizard(models.TransientModel):
     excel_file  = fields.Binary(string='Excel Report', readonly=True)
     excel_fname = fields.Char(string='Filename',      readonly=True)
 
+    def _dhaka_today(self):
+        """Current date in Asia/Dhaka, independent of server/user timezone."""
+        return datetime.now(pytz.utc).astimezone(pytz.timezone('Asia/Dhaka')).date()
+
     def _build_domain(self):
         domain = [('work_date', '=', self.report_date)]
         if self.department_id:
             domain.append(('department_id', '=', self.department_id.id))
         if self.shift_id:
             domain.append(('shift_id', '=', self.shift_id.id))
-        if self.gender:
-            domain.append(('employee_id.sex', '=', self.gender))
+        if self.sex:
+            domain.append(('employee_id.sex', '=', self.sex))
         return domain
+
+    @staticmethod
+    def _badge_sort_key(r):
+        """Numeric-aware badge sort — same approach as
+        WeeklyPayrollExcelWizard._badge_sort_key, so "10" sorts after "9"
+        instead of a plain-string sort putting it before."""
+        badge = r.employee_id.zk_badge_no or ''
+        try:
+            badge_key = (0, int(badge))
+        except (ValueError, TypeError):
+            badge_key = (1, badge)
+        return (r.department_id.name or '', r.shift_id.name or '', badge_key)
 
     def action_export_excel(self):
         if not xlsxwriter:
             raise UserError('xlsxwriter is not installed. Run: pip install xlsxwriter')
 
-        records = self.env['daily.payroll'].search(self._build_domain())
-        records = records.sorted(key=lambda r: r.employee_id.zk_badge_no_int)
+        records = self.env['daily.payroll'].search(
+            self._build_domain(),
+            order='department_id, shift_id, employee_id'
+        )
+        records = records.sorted(key=self._badge_sort_key)
 
         output = io.BytesIO()
         wb     = xlsxwriter.Workbook(output, {'in_memory': True})
@@ -209,35 +328,51 @@ class DailyPayrollExcelWizard(models.TransientModel):
         hdr_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 11,
                                      'bg_color': '#1F3864', 'font_color': '#FFFFFF',
                                      'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
-        cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+        grp_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 12,
+                                     'bg_color': '#D9E1F2', 'border': 1,
                                      'align': 'center', 'valign': 'vcenter'})
+        cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'})
         num_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
-        present_fmt= wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#C6EFCE', 'align': 'center', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
+        rate_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+                                     'num_format': '#,##0.0000', 'valign': 'vcenter'})
+        ot_fmt     = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+                                     'bg_color': '#E2EFDA', 'num_format': '#,##0', 'valign': 'vcenter'})
         absent_fmt = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'bg_color': '#FCE4D6', 'align': 'center', 'valign': 'vcenter'})
         dayoff_fmt = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'bg_color': '#E2E2E2', 'align': 'center', 'valign': 'vcenter',
                                      'italic': True})
         tot_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
-                                     'bg_color': '#FFF2CC', 'border': 1, 'num_format': '#,##0.00',
-                                     'align': 'center', 'valign': 'vcenter'})
+                                     'bg_color': '#FFF2CC', 'border': 1, 'num_format': '#,##0', 'valign': 'vcenter'})
         tot_lbl    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
-                                     'bg_color': '#FFF2CC', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+                                     'bg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter'})
         title_fmt  = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 14,
                                      'font_color': '#1F3864', 'align': 'center', 'valign': 'vcenter'})
+        date_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+                                     'num_format': 'dd/mm/yyyy', 'valign': 'vcenter'})
 
-        COLS   = ['SL', 'ID No', 'Employee Name', 'Status', 'Base Pay', 'Total Amount', 'Remarks']
-        WIDTHS = [6, 12, 26, 12, 14, 14, 20]
+        COLS   = [
+            'SL', 'ID No', 'Employee', 'Date', 'Department', 'Shift', 'Status',
+            'Hours\nWorked', 'Daily\nWage', 'Hourly Rate\n(Wage÷8)',
+            'OT Hours\n(Validated)', 'OT\nAmount',
+            'Base Pay', 'Total Amount', 'Remarks',
+        ]
+        WIDTHS = [6, 12, 24, 12, 28, 20, 12, 10, 12, 14, 14, 12, 12, 14, 20]
+
+        groups = {}
+        for r in records:
+            dept  = r.department_id.name or 'No Department'
+            shift = r.shift_id.name if r.shift_id else 'No Shift'
+            groups.setdefault((dept, shift), []).append(r)
 
         title_parts = [self.report_date.strftime('%d %B %Y')]
         if self.department_id:
             title_parts.append(self.department_id.name)
         if self.shift_id:
             title_parts.append(self.shift_id.name)
-        if self.gender:
-            title_parts.append(dict(self._fields['gender'].selection)[self.gender])
+        if self.sex:
+            title_parts.append(dict(self._fields['sex'].selection).get(self.sex))
         title_str   = 'Daily Payroll Report  |  ' + '  ·  '.join(title_parts)
         sheet_label = str(self.report_date)[:31]
 
@@ -249,46 +384,80 @@ class DailyPayrollExcelWizard(models.TransientModel):
             ws.set_column(i, i, w)
 
         row = 2
-        grand_base = grand_total = 0.0
+        grand_base = grand_ot = grand_total = 0.0
 
-        for c, h in enumerate(COLS):
-            ws.write(row, c, h, hdr_fmt)
-        ws.set_row(row, 42)
-        row += 1
+        for (dept, shift) in sorted(groups.keys()):
+            recs = groups[(dept, shift)]
 
-        sl_no = 1
-        for r in records:
-            ws.set_row(row, 24)
-            badge_no = r.employee_id.zk_badge_no or ''
-
-            if r.is_day_off:
-                status_str = 'Day Off'
-                s_fmt      = dayoff_fmt
-            elif r.present:
-                status_str = 'Present'
-                s_fmt      = present_fmt
-            else:
-                status_str = 'Absent'
-                s_fmt      = absent_fmt
-
-            ws.write(row, 0, sl_no,                    cell_fmt)
-            ws.write(row, 1, badge_no,                 cell_fmt)
-            ws.write(row, 2, r.employee_id.name or '', cell_fmt)
-            ws.write(row, 3, status_str,                s_fmt)
-            ws.write(row, 4, r.amount,                  num_fmt)
-            ws.write(row, 5, r.total_amount,            num_fmt)
-            ws.write(row, 6, '',                        cell_fmt)
-
-            grand_base  += r.amount
-            grand_total += r.total_amount
-            sl_no += 1
+            # Department row — centered, taller
+            ws.merge_range(row, 0, row, len(COLS) - 1, f'{dept}   |   {shift}', grp_fmt)
+            ws.set_row(row, 30)
             row += 1
 
+            for c, h in enumerate(COLS):
+                ws.write(row, c, h, hdr_fmt)
+            ws.set_row(row, 42)
+            row += 1
+
+            g_base = g_ot = g_total = 0.0
+            sl_no  = 1
+
+            for r in recs:
+                ws.set_row(row, 24)
+                badge_no = r.employee_id.zk_badge_no or ''
+
+                if r.is_day_off:
+                    status_str = 'Day Off'
+                    s_fmt      = dayoff_fmt
+                elif r.present:
+                    status_str = 'Present'
+                    s_fmt      = cell_fmt
+                else:
+                    status_str = 'Absent'
+                    s_fmt      = absent_fmt
+
+                ws.write(row, 0,  sl_no,                       cell_fmt)
+                ws.write(row, 1,  badge_no,                    cell_fmt)
+                ws.write(row, 2,  r.employee_id.name or '',    cell_fmt)
+                ws.write_datetime(row, 3, r.work_date,         date_fmt)
+                ws.write(row, 4,  r.department_id.name or '',  cell_fmt)
+                ws.write(row, 5,  r.shift_id.name if r.shift_id else '', cell_fmt)
+                ws.write(row, 6,  status_str,                  s_fmt)
+                ws.write(row, 7,  r.hours_worked,              num_fmt)
+                ws.write(row, 8,  r.wage,                      num_fmt)
+                ws.write(row, 9,  r.hourly_rate,               rate_fmt)
+                ws.write(row, 10, r.ot_hours,                  num_fmt if r.ot_hours == 0 else ot_fmt)
+                ws.write(row, 11, r.ot_amount,                 num_fmt if r.ot_amount == 0 else ot_fmt)
+                ws.write(row, 12, r.amount,                    num_fmt)
+                ws.write(row, 13, r.total_amount,              num_fmt)
+                ws.write(row, 14, '',                          cell_fmt)
+
+                g_base  += r.amount
+                g_ot    += r.ot_amount
+                g_total += r.total_amount
+                sl_no   += 1
+                row += 1
+
+            ws.set_row(row, 22)
+            for c in range(12):
+                ws.write(row, c, '', tot_lbl)
+            ws.write(row, 12, f'Subtotal  ({len(recs)} emp)', tot_lbl)
+            ws.write(row, 11, g_ot,    tot_fmt)
+            ws.write(row, 12, g_base,  tot_fmt)
+            ws.write(row, 13, g_total, tot_fmt)
+            ws.write(row, 14, '',      tot_lbl)
+
+            grand_base  += g_base
+            grand_ot    += g_ot
+            grand_total += g_total
+            row += 2
+
         ws.set_row(row, 22)
-        ws.merge_range(row, 0, row, 3, 'GRAND TOTAL', tot_lbl)
-        ws.write(row, 4, grand_base,  tot_fmt)
-        ws.write(row, 5, grand_total, tot_fmt)
-        ws.write(row, 6, '',          tot_lbl)
+        ws.merge_range(row, 0, row, 11, 'GRAND TOTAL', tot_lbl)
+        ws.write(row, 11, grand_ot,    tot_fmt)
+        ws.write(row, 12, grand_base,  tot_fmt)
+        ws.write(row, 13, grand_total, tot_fmt)
+        ws.write(row, 14, '',          tot_lbl)
 
         wb.close()
         output.seek(0)
@@ -297,7 +466,7 @@ class DailyPayrollExcelWizard(models.TransientModel):
             f"daily_payroll_{self.report_date}"
             f"{'_' + self.department_id.name.replace(' ', '_') if self.department_id else ''}"
             f"{'_' + self.shift_id.name.replace(' ', '_') if self.shift_id else ''}"
-            f"{'_' + self.gender if self.gender else ''}"
+            f"{'_' + self.sex if self.sex else ''}"
             f".xlsx"
         )
         self.write({'excel_file': base64.b64encode(output.read()), 'excel_fname': fname})
@@ -412,6 +581,10 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
 
         # Bonus attendance counts (only when requested)
         bonus_counts = self._bonus_att_counts() if self.include_bonus else {}
+        # Last-week adjustment amounts (daily.payroll.adjustment), added into
+        # Grand Total the same way "Last Month Due" is added into net pay in
+        # the main monthly payroll.
+        last_week_totals = self.env['daily.payroll.adjustment'].get_week_totals(thursday)
 
         week_days = [thursday + timedelta(days=i) for i in range(7)]
         emp_data  = {}
@@ -444,12 +617,12 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                                      'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
         cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'})
         num_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
         cnt_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'align': 'center', 'valign': 'vcenter'})
         present_f  = wb.add_format({'font_name': 'Arial', 'font_size': 9, 'border': 1,
                                      'bg_color': '#E2EFDA', 'align': 'center',
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
         absent_f   = wb.add_format({'font_name': 'Arial', 'font_size': 9, 'border': 1,
                                      'bg_color': '#FCE4D6', 'align': 'center', 'valign': 'vcenter'})
         dayoff_f   = wb.add_format({'font_name': 'Arial', 'font_size': 9, 'border': 1,
@@ -457,7 +630,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                                      'valign': 'vcenter', 'italic': True})
         tot_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#FFF2CC', 'border': 1,
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
         tot_cnt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#FFF2CC', 'border': 1,
                                      'align': 'center', 'valign': 'vcenter'})
@@ -465,23 +638,24 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                                      'bg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter'})
         bonus_fmt  = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#E2EFDA', 'border': 1,
-                                     'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
         nobonus_f  = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#FCE4D6', 'num_format': '#,##0.00',
+                                     'bg_color': '#FCE4D6', 'num_format': '#,##0',
                                      'align': 'center', 'valign': 'vcenter'})
         grtot_fmt  = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#D6E4BC', 'border': 1,
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
         tot_bonus  = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#C6EFCE', 'border': 1,
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
 
-        DAY_NAMES  = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed']
+        DAY_NAMES  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         fixed_cols = ['SL', 'ID No', 'Employee', 'Department', 'Shift', 'Daily\nWage']
 
         # Summary columns — bonus columns inserted before Remarks when active
         base_summary = ['Present\nDays', 'Absent\nDays', 'Day Off\nDays',
-                        'Total\nBase Pay', 'Total OT\nHours', 'Total OT\nPay', 'Grand\nTotal']
+                        'Total\nBase Pay', 'Total OT\nHours', 'Total OT\nPay',
+                        'Last Week\nAdj.', 'Grand\nTotal']
         bonus_summary = (
             [f'Att. Count\n({self.bonus_month.strftime("%b %Y")})',
              f'Bonus\n(৳{self.BONUS_AMOUNT:,.0f})',
@@ -497,7 +671,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
 
         # Column widths: fixed + 7 day cols + summary
         bonus_extra_widths = [12, 12, 14] if self.include_bonus else []
-        col_widths = [6, 12, 26, 28, 20, 12] + [16] * 7 + [11, 11, 11, 14, 14, 14, 14] + bonus_extra_widths + [20]
+        col_widths = [6, 12, 26, 28, 20, 12] + [16] * 7 + [11, 11, 11, 14, 14, 14, 14, 14] + bonus_extra_widths + [20]
 
         sheet_label = f"Week {thursday.strftime('%d%b')}-{wednesday.strftime('%d%b%Y')}"[:31]
         ws = wb.add_worksheet(sheet_label)
@@ -550,19 +724,27 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         # Precompute column offsets for summary fields
         S = n_fixed + n_days   # summary base offset
         # indices within summary_cols:
-        # 0=Present, 1=Absent, 2=DayOff, 3=BasePay, 4=OT_h, 5=OT_p, 6=GrandTotal
-        # [7=AttCount, 8=Bonus, 9=Total+Bonus]  (only if include_bonus)
+        # 0=Present, 1=Absent, 2=DayOff, 3=BasePay, 4=OT_h, 5=OT_p, 6=LastWeekAdj, 7=GrandTotal
+        # [8=AttCount, 9=Bonus, 10=Total+Bonus]  (only if include_bonus)
         # last = Remarks
 
-        # Flat list of all employees, sorted by zk_badge_no (character field).
-        # No department/shift grouping in the main sheet anymore.
-        all_emps = sorted(
-            ((eid, e) for eid, e in emp_data.items()),
-            key=lambda item: item[1]['badge'] or 'zzzzzzzz'
-        )
+        # Flat list of all employees, sorted numerically by zk_badge_no —
+        # same _badge_sort_key logic as the main monthly payroll export
+        # (payroll_payslip.py action_export_payroll), so badge order matches
+        # between the two reports instead of the old plain-string sort
+        # (which put "10" before "9").
+        def _badge_sort_key(item):
+            badge = item[1]['badge'] or ''
+            try:
+                return (0, int(badge))
+            except (ValueError, TypeError):
+                return (1, badge)
+
+        all_emps = sorted(emp_data.items(), key=_badge_sort_key)
 
         grand_present = grand_absent = grand_dayoff = 0
         grand_base = grand_ot_h = grand_ot_p = grand_total = 0.0
+        grand_last_week = 0.0
         grand_bonus = grand_with_bonus = 0.0
 
         # Per-department roll-up, used to build the
@@ -604,7 +786,8 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                     total_ot_p += rec.ot_amount
                     present_days += 1
 
-            grand_t = total_base + total_ot_p
+            last_week_amt = last_week_totals.get(eid, 0.0)
+            grand_t = total_base + total_ot_p + last_week_amt
 
             ws.write(row, S + 0, present_days,  cnt_fmt)
             ws.write(row, S + 1, absent_days,   cnt_fmt)
@@ -612,7 +795,8 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
             ws.write(row, S + 3, total_base,    num_fmt)
             ws.write(row, S + 4, total_ot_h,    num_fmt)
             ws.write(row, S + 5, total_ot_p,    num_fmt)
-            ws.write(row, S + 6, grand_t,       num_fmt)
+            ws.write(row, S + 6, last_week_amt, num_fmt)
+            ws.write(row, S + 7, grand_t,       num_fmt)
 
             emp_bonus   = 0.0
             total_bonus = grand_t
@@ -621,12 +805,12 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                 emp_bonus   = self.BONUS_AMOUNT if att_count > self.BONUS_THRESHOLD else 0.0
                 total_bonus = grand_t + emp_bonus
                 b_fmt       = bonus_fmt if emp_bonus > 0 else nobonus_f
-                ws.write(row, S + 7, att_count,   cnt_fmt)
-                ws.write(row, S + 8, emp_bonus,   b_fmt)
-                ws.write(row, S + 9, total_bonus, grtot_fmt)
-                ws.write(row, S + 10, '',          cell_fmt)
+                ws.write(row, S + 8, att_count,   cnt_fmt)
+                ws.write(row, S + 9, emp_bonus,   b_fmt)
+                ws.write(row, S + 10, total_bonus, grtot_fmt)
+                ws.write(row, S + 11, '',          cell_fmt)
             else:
-                ws.write(row, S + 7, '', cell_fmt)
+                ws.write(row, S + 8, '', cell_fmt)
 
             grand_present    += present_days
             grand_absent     += absent_days
@@ -634,6 +818,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
             grand_base       += total_base
             grand_ot_h       += total_ot_h
             grand_ot_p       += total_ot_p
+            grand_last_week  += last_week_amt
             grand_total      += grand_t
             grand_bonus      += emp_bonus
             grand_with_bonus += total_bonus
@@ -671,14 +856,15 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         ws.write(row, S + 3, grand_base,    tot_fmt)
         ws.write(row, S + 4, grand_ot_h,    tot_fmt)
         ws.write(row, S + 5, grand_ot_p,    tot_fmt)
-        ws.write(row, S + 6, grand_total,   tot_fmt)
+        ws.write(row, S + 6, grand_last_week, tot_fmt)
+        ws.write(row, S + 7, grand_total,   tot_fmt)
         if self.include_bonus:
-            ws.write(row, S + 7,  '',              tot_cnt)
-            ws.write(row, S + 8,  grand_bonus,     tot_bonus)
-            ws.write(row, S + 9,  grand_with_bonus,tot_bonus)
-            ws.write(row, S + 10, '',               tot_lbl)
+            ws.write(row, S + 8,  '',              tot_cnt)
+            ws.write(row, S + 9,  grand_bonus,     tot_bonus)
+            ws.write(row, S + 10, grand_with_bonus,tot_bonus)
+            ws.write(row, S + 11, '',               tot_lbl)
         else:
-            ws.write(row, S + 7, '', tot_lbl)
+            ws.write(row, S + 8, '', tot_lbl)
 
         # ── Weekly Summary sheet — how much money each department needs
         #    to disburse for the week ────────────────────────────────
@@ -694,23 +880,23 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
                                        'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
         sm_cell_fmt  = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'})
         sm_num_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                       'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+                                       'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
         sm_cnt_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                        'align': 'center', 'valign': 'vcenter'})
         sm_pay_fmt   = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                        'bg_color': '#E2EFDA', 'border': 1,
-                                       'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+                                       'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
         sm_bonus_fmt = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                        'bg_color': '#D6E4BC', 'border': 1,
-                                       'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+                                       'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
         sm_tot_lbl   = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                        'bg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter'})
         sm_tot_num   = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                        'bg_color': '#FFF2CC', 'border': 1,
-                                       'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+                                       'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
         sm_tot_pay   = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                        'bg_color': '#C6EFCE', 'border': 1,
-                                       'num_format': '#,##0.00', 'align': 'center', 'valign': 'vcenter'})
+                                       'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
 
         SM_COLS = [
             'SL', 'Department', 'Employees', 'Present\nDays', 'Absent\nDays',
@@ -933,14 +1119,14 @@ class DailyPayrollBonusWizard(models.TransientModel):
         num_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
         bonus_fmt  = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#E2EFDA', 'num_format': '#,##0.00',
+                                     'bg_color': '#E2EFDA', 'num_format': '#,##0',
                                      'align': 'center', 'valign': 'vcenter', 'bold': True})
         nobonus_fmt= wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#FCE4D6', 'num_format': '#,##0.00',
+                                     'bg_color': '#FCE4D6', 'num_format': '#,##0',
                                      'align': 'center', 'valign': 'vcenter'})
         tot_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#FFF2CC', 'border': 1,
-                                     'num_format': '#,##0.00', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter'})
         tot_cnt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
                                      'bg_color': '#FFF2CC', 'border': 1,
                                      'align': 'center', 'valign': 'vcenter'})

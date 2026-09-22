@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_payroll_month_lock_wizard_form" model="ir.ui.view">
+        <field name="name">payroll.month.lock.wizard.form</field>
+        <field name="model">payroll.month.lock.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Lock Payroll Month">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Locking a month blocks creating, editing, deleting,
+                        or recomputing any payslip in that month, for every
+                        employee, until it is unlocked again.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not is_locked">
+                        <strong>This payroll month is currently locked.</strong>
+                    </div>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="month" options="{'min_precision': 'months'}"/>
+                        <field name="note" invisible="is_locked"/>
+                        <field name="is_locked" invisible="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Lock Month" name="action_lock"
+                            type="object" class="btn-primary"
+                            invisible="is_locked"
+                            confirm="Lock this payroll month? No payslip in it can be created, edited, deleted, or recomputed until it's unlocked."/>
+                    <button string="Unlock Month" name="action_unlock"
+                            type="object" class="btn-primary"
+                            invisible="not is_locked"/>
+                    <button string="Close" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_payroll_month_lock_wizard" model="ir.actions.act_window">
+        <field name="name">Lock Payroll Month</field>
+        <field name="res_model">payroll.month.lock.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

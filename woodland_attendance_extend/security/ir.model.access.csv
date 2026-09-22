@@ -5,6 +5,10 @@ access_hr_swap_user,hr.swap_user,model_hr_swap,hr.group_hr_user,1,1,1,0
 access_hr_swap_manager,hr.swap_manager,model_hr_swap,hr.group_hr_manager,1,1,1,1
 access_hr_badge_print_wizard,access_hr_badge_print_wizard,model_hr_badge_print_wizard,base.group_user,1,1,1,1
 access_hr_approval_sheet_wizard,access_hr_approval_sheet_wizard,model_hr_approval_sheet_wizard,base.group_user,1,1,1,1
+access_hr_employee_dayoff_history_user,hr.employee.dayoff.history.user,model_hr_employee_dayoff_history,hr.group_hr_user,1,1,1,0
+access_hr_employee_dayoff_history_manager,hr.employee.dayoff.history.manager,model_hr_employee_dayoff_history,hr.group_hr_manager,1,1,1,1
+access_hr_employee_approval_user,hr.employee.approval.user,model_hr_employee_approval,hr.group_hr_user,1,1,1,0
+access_hr_employee_approval_manager,hr.employee.approval.manager,model_hr_employee_approval,hr.group_hr_manager,1,1,1,1
 
 
 

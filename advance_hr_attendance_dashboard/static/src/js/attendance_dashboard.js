@@ -543,9 +543,9 @@ class AttendanceDashboard extends Component {
     // ══════════════════════════════════════════════ LEAVE SUMMARY GRID
     // Cell styling for an SL/CL/LWP count in the leave summary grid.
     leaveSummaryCellStyle(code, count) {
-        const colors = { sl: '#6CC1ED', cl: '#30C381', lwp: '#F06050' };
+        const colors = { sl: '#0d47a1', cl: '#1b5e20', lwp: '#b71c1c' };
         if (!count) return 'background:#f8f9fa;color:#94a3b8;';
-        return `background:${colors[code]}40;color:${colors[code]};font-weight:700;`;
+        return `background:${colors[code]};color:#ffffff;font-weight:700;`;
     }
 
     get leaveSummaryMonthLabels() {

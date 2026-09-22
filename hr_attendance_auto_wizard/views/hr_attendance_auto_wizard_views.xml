@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_hr_attendance_auto_wizard_form" model="ir.ui.view">
+        <field name="name">hr.attendance.auto.wizard.form</field>
+        <field name="model">hr.attendance.auto.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Automatic Attendance Creation">
+                <group>
+                    <group>
+                        <field name="employee_id" options="{'no_create': True}"
+                              />
+                        <field name="employee_day_off_day"/>
+                    </group>
+                    <group>
+                        <field name="date_from" />
+                        <field name="date_to"/>
+                    </group>
+                </group>
+
+                <div class="alert alert-info" role="alert">
+                    <field name="total_days"/> day(s) in range —
+                    <field name="day_off_count"/> day-off day(s) skipped,
+                    <field name="existing_count"/> day(s) already have attendance.
+                    Review the list below: uncheck any day you want to leave absent.
+                </div>
+                <field name="line_ids">
+                    <list editable="bottom" decoration-muted="is_leave and not selected">
+                        <field name="date"/>
+                        <field name="is_leave" string="On Leave"/>
+                        <field name="selected"/>
+                    </list>
+                </field>
+
+                <footer>
+                    <button name="action_compute_days" type="object" string="Compute Days"
+                            class="btn-primary"/>
+                    <button name="action_compute_days" type="object" string="Recompute"
+                            class="btn-secondary"/>
+                    <button name="action_create_attendance" type="object" string="Create Attendance"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hr_attendance_auto_wizard" model="ir.actions.act_window">
+        <field name="name">Auto-Create Attendance</field>
+        <field name="res_model">hr.attendance.auto.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_hr_attendance_auto_wizard"
+              name="Auto-Create Attendance"
+              parent="hr_attendance.menu_hr_attendance_configuration"
+              action="action_hr_attendance_auto_wizard"
+              sequence="50"/>
+
+</odoo>

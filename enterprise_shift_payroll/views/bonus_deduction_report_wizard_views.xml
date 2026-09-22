@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Bonus & Double-Deduction Report Wizard – Form View
+    ════════════════════════════════════════════════════════════════ -->
+    <record id="view_payroll_bonus_deduction_report_wizard_form" model="ir.ui.view">
+        <field name="name">payroll.bonus.deduction.report.wizard.form</field>
+        <field name="model">payroll.bonus.deduction.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bonus &amp; Deduction Department Summary">
+                <group>
+                    <field name="report_month" options="{'min_precision':'months'}"/>
+                </group>
+                <footer>
+                    <button name="action_generate_report"
+                            string="Generate Report"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Action – opens the wizard in a dialog
+    ════════════════════════════════════════════════════════════════ -->
+    <record id="action_open_bonus_deduction_report_wizard" model="ir.actions.act_window">
+        <field name="name">Bonus &amp; Deduction Department Summary</field>
+        <field name="res_model">payroll.bonus.deduction.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_payroll_bonus_deduction_report_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

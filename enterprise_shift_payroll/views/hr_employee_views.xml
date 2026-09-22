@@ -9,8 +9,56 @@
                 <field name="salary_type"/>
                 <field name="daily_wage"/>
             </xpath>
+
+            <!-- Field + button inserted together in one xpath: day_off_day
+                 already appears a second time as a column inside the
+                 Day-Off History list (added by woodland_attendance_extend),
+                 so a second xpath re-querying "//field[@name='day_off_day']"
+                 would match both and wrongly add the button into that list
+                 too. Keeping them as one insertion avoids that. -->
             <xpath expr="//field[@name='job_id']" position="before">
-                <field name="day_off_day"/>
+                <label for="day_off_day"/>
+                <div class="o_row">
+                    <field name="day_off_day" nolabel="1" readonly="1"/>
+                    <button name="action_change_dayoff" type="object"
+                            string="Change Day Off" class="btn-link"
+                            icon="fa-calendar"/>
+                </div>
+            </xpath>
+
+            <!-- Wage is edited only through the Set/Change Wage wizards
+                 below, so every change is dated and kept in
+                 hr.employee.wage.history instead of silently overwriting
+                 whatever wage was in effect for past payroll months. -->
+            <xpath expr="//field[@name='wage']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//div[@name='wage']" position="inside">
+                <button name="action_set_wage" type="object"
+                        string="Set Wage" class="btn-link ms-2"
+                        invisible="wage != 0"/>
+                <button name="action_change_wage" type="object"
+                        string="Change Wage" class="btn-link ms-2"
+                        invisible="wage == 0"/>
+            </xpath>
+            <xpath expr="//page[@name='payroll_information']" position="after">
+                <page name="wage_history" string="Wage History"
+                      groups="hr.group_hr_manager">
+                    <field name="wage_history_ids" readonly="1">
+                        <list>
+                            <field name="date_start" string="Effective Month"/>
+                            <field name="date_end"/>
+                            <field name="previous_wage"/>
+                            <field name="wage" string="New Wage"/>
+                            <field name="change_amount" string="Change"/>
+                            <field name="change_type" widget="badge"
+                                   decoration-success="change_type == 'increase'"
+                                   decoration-danger="change_type == 'decrease'"/>
+                            <field name="changed_by"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>

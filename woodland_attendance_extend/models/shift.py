@@ -57,12 +57,13 @@ class HrShift(models.Model):
         """
         self.ensure_one()
         shift_start = self._float_to_dt(self.start_time, roster_date)
+        grace_minutes = self.env.company.attendance_late_grace_minutes or 15
 
         return {
             'shift_start': shift_start,
             'window_start': shift_start - timedelta(hours=1),
             'window_end': shift_start + timedelta(hours=2),
-            'late_after': shift_start + timedelta(minutes=15),
+            'late_after': shift_start + timedelta(minutes=grace_minutes),
         }
 
     def get_break_windows(self, roster_date):

@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<template id="template" xml:space="preserve">
+<t t-name="EmployeeMasterDashboard" owl="1">
+<div class="emd_wrapper">
+
+    <!-- ═══ HEADER ══════════════════════════════════════════════════════ -->
+    <div class="emd_header">
+        <div class="emd_header_left">
+            <span class="emd_title_icon">📊</span>
+            <div>
+                <h4 class="emd_title">Employee Dashboard</h4>
+                <span class="emd_subtitle">Attendance &amp; headcount KPIs for a selected date</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TOOLBAR ═════════════════════════════════════════════════════ -->
+    <div class="emd_toolbar">
+        <div class="emd_filter_group">
+            <label class="emd_label">Date</label>
+            <input type="date" class="emd_select" t-att-value="state.selectedDate" t-on-change="onChangeDate"/>
+        </div>
+        <div class="emd_filter_group">
+            <label class="emd_label">Department</label>
+            <select class="emd_select" t-on-change="onChangeDepartment">
+                <option value="" t-att-selected="!state.selectedDepartment">All Departments</option>
+                <t t-foreach="departmentOptions" t-as="dept" t-key="dept.id">
+                    <option t-att-value="dept.id" t-att-selected="dept.id === state.selectedDepartment" t-out="dept.name"/>
+                </t>
+            </select>
+        </div>
+        <div class="emd_filter_group">
+            <label class="emd_label">Worker Type</label>
+            <select class="emd_select" t-on-change="onChangeWorkerType">
+                <option value="" t-att-selected="!state.selectedWorkerType">All Types</option>
+                <t t-foreach="workerTypeOptions" t-as="wtype" t-key="wtype.id">
+                    <option t-att-value="wtype.id" t-att-selected="wtype.id === state.selectedWorkerType" t-out="wtype.name"/>
+                </t>
+            </select>
+        </div>
+    </div>
+
+    <!-- ═══ LOADING ══════════════════════════════════════════════════════ -->
+    <div class="emd_loading" t-if="state.loading">
+        <div class="emd_spinner"/>
+        <span>Loading…</span>
+    </div>
+
+    <t t-elif="!state.kpis">
+        <div class="emd_empty">
+            <span class="emd_empty_icon">📅</span>
+            <p>No data available.</p>
+        </div>
+    </t>
+
+    <t t-else="">
+        <!-- ═══ HERO — Present Today ═══════════════════════════════════════ -->
+        <div class="emd_hero">
+            <div class="emd_hero_ring" t-attf-style="background: conic-gradient(#0ca30c {{ hero.ringDeg }}%, #e6ebf1 0);">
+                <div class="emd_hero_ring_inner">
+                    <span class="emd_hero_ring_pct" t-out="hero.rate + '%'"/>
+                    <span class="emd_hero_ring_label">present</span>
+                </div>
+            </div>
+            <div class="emd_hero_body emd_clickable" t-on-click="() => this.onClickCard('present', 'Present Today')">
+                <div class="emd_hero_value" t-out="fmt(hero.present)"/>
+                <div class="emd_hero_label">Present Today</div>
+                <div class="emd_hero_sub">
+                    out of <t t-out="fmt(hero.scheduled)"/> scheduled to work
+                    <span class="emd_hero_chip" t-if="hero.onLeave">· <t t-out="hero.onLeave"/> on leave</span>
+                    <span class="emd_hero_chip" t-if="hero.dayOff">· <t t-out="hero.dayOff"/> on day-off</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ TODAY'S ATTENDANCE ═════════════════════════════════════════ -->
+        <div class="emd_section_title">Today’s Attendance</div>
+        <div class="emd_kpi_row">
+            <t t-foreach="todayCards" t-as="card" t-key="card.key">
+                <div t-attf-class="emd_kpi_card emd_clickable emd_tone_{{ card.tone }}"
+                     t-on-click="() => this.onClickCard(card.key, card.drillLabel || card.label)">
+                    <div class="emd_kpi_icon" t-out="card.icon"/>
+                    <div class="emd_kpi_body">
+                        <div class="emd_kpi_value" t-out="cardValueText(card)"/>
+                        <div class="emd_kpi_label" t-out="card.label"/>
+                    </div>
+                </div>
+            </t>
+        </div>
+
+        <!-- ═══ WORKFORCE ══════════════════════════════════════════════════ -->
+        <div class="emd_section_title">Workforce</div>
+        <div class="emd_kpi_row">
+            <t t-foreach="workforceCards" t-as="card" t-key="card.key">
+                <div t-attf-class="emd_kpi_card emd_clickable emd_tone_{{ card.tone }}"
+                     t-on-click="() => this.onClickCard(card.key, card.drillLabel || card.label)">
+                    <div class="emd_kpi_icon" t-out="card.icon"/>
+                    <div class="emd_kpi_body">
+                        <div class="emd_kpi_value" t-out="cardValueText(card)"/>
+                        <div class="emd_kpi_label" t-out="card.label"/>
+                        <div class="emd_kpi_sub" t-if="card.sub" t-out="card.sub"/>
+                    </div>
+                </div>
+            </t>
+        </div>
+
+        <!-- ═══ BADGES ═════════════════════════════════════════════════════ -->
+        <div class="emd_section_title">Badges</div>
+        <div class="emd_kpi_row">
+            <t t-foreach="badgeCards" t-as="card" t-key="card.key">
+                <div t-attf-class="emd_kpi_card emd_clickable emd_tone_{{ card.tone }}"
+                     t-on-click="() => this.onClickCard(card.key, card.drillLabel || card.label)">
+                    <div class="emd_kpi_icon" t-out="card.icon"/>
+                    <div class="emd_kpi_body">
+                        <div class="emd_kpi_value" t-out="cardValueText(card)"/>
+                        <div class="emd_kpi_label" t-out="card.label"/>
+                        <div class="emd_kpi_sub" t-if="card.sub" t-out="card.sub"/>
+                    </div>
+                </div>
+            </t>
+        </div>
+
+        <!-- ═══ CHARTS ══════════════════════════════════════════════════ -->
+        <div class="emd_charts_row">
+
+            <!-- Present / Absent / On Leave by worker type -->
+            <div class="emd_chart_card">
+                <div class="emd_chart_head">
+                    <span class="emd_chart_title">Present / Absent / On Leave by Worker Type</span>
+                    <div class="emd_legend">
+                        <span class="emd_legend_item"><span class="emd_swatch emd_swatch_good"/> Present</span>
+                        <span class="emd_legend_item"><span class="emd_swatch emd_swatch_critical"/> Absent</span>
+                        <span class="emd_legend_item"><span class="emd_swatch emd_swatch_warning"/> On Leave</span>
+                    </div>
+                </div>
+                <t t-if="!presenceChartRows.length">
+                    <div class="emd_chart_empty">No employees for the selected filters.</div>
+                </t>
+                <div t-else="" class="emd_bar_plot">
+                    <t t-foreach="presenceChartRows" t-as="row" t-key="row.label">
+                        <div class="emd_bar_group">
+                            <div class="emd_bar_group_bars">
+                                <div class="emd_bar_col_wrap">
+                                    <span class="emd_bar_value" t-out="row.present"/>
+                                    <div class="emd_bar_col emd_bar_good" t-attf-style="height: {{ row.presentPct }}%"/>
+                                </div>
+                                <div class="emd_bar_col_wrap">
+                                    <span class="emd_bar_value" t-out="row.absent"/>
+                                    <div class="emd_bar_col emd_bar_critical" t-attf-style="height: {{ row.absentPct }}%"/>
+                                </div>
+                                <div class="emd_bar_col_wrap">
+                                    <span class="emd_bar_value" t-out="row.on_leave"/>
+                                    <div class="emd_bar_col emd_bar_warning" t-attf-style="height: {{ row.leavePct }}%"/>
+                                </div>
+                            </div>
+                            <div class="emd_bar_group_label" t-out="row.label"/>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
+            <!-- Headcount by department -->
+            <div class="emd_chart_card">
+                <div class="emd_chart_head">
+                    <span class="emd_chart_title">Headcount by Department</span>
+                </div>
+                <t t-if="!departmentChartRows.length">
+                    <div class="emd_chart_empty">No employees for the selected filters.</div>
+                </t>
+                <div t-else="" class="emd_hbar_plot">
+                    <t t-foreach="departmentChartRows" t-as="row" t-key="row.department">
+                        <div class="emd_hbar_row emd_clickable" t-on-click="() => this.onClickDepartmentBar(row)">
+                            <span class="emd_hbar_label" t-out="row.department" t-att-title="row.department"/>
+                            <div class="emd_hbar_track">
+                                <div class="emd_hbar_fill" t-attf-style="width: {{ row.pct }}%"/>
+                            </div>
+                            <span class="emd_hbar_value" t-out="fmt(row.employee_count)"/>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
+        </div>
+    </t>
+
+</div>
+</t>
+</template>

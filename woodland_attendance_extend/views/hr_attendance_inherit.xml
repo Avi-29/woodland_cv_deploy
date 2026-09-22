@@ -13,6 +13,8 @@
                             type="object"
                             string="Remove Late"
                             class="btn-primary"
+                            groups="hr.group_hr_manager"
+                            confirm="Clear the Late flag for the selected record(s)?"
                     />
                 </header>
             </xpath>
@@ -29,7 +31,7 @@
         <field name="inherit_id" ref="hr_attendance.hr_attendance_employee_simple_tree_view"/>
         <field name="arch" type="xml">
             <xpath expr="field[@name='check_out']" position="after">
-                <field name="is_late"/>
+                <field name="is_late" readonly="1"/>
                 <field name="marked_as_day_off"/>
             </xpath>
         </field>
@@ -64,7 +66,7 @@
             <xpath expr="//group/group[2]" position="inside">
                 <field name="hours_to_approve" string="Hours To Approve"
                        invisible="overtime_status not in ['to_approve'] "/>
-                <field name="is_late"/>
+                <field name="is_late" readonly="1"/>
                 <field name="marked_as_day_off"/>
                 <field name="notes"/>
             </xpath>
@@ -98,13 +100,36 @@
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_employee_documents"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-paperclip">
+                    <field name="document_count" widget="statinfo" string="Documents"/>
+                </button>
+            </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
                 <field name="worker_type" string="Worker Type"/>
                 <field name="joining_date"/>
                 <field name="is_ot_eligible"/>
+                <field name="is_late_eligible"/>
                 <field name="is_12_hour_shift" string="12-Hour Shift Employee"
                        help="Enable for Day (06:00-18:00) / Night (18:00-06:00) employees. Prevents shift window overlap mismatches."/>
 
+            </xpath>
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Day-Off History" name="dayoff_history">
+                    <field name="dayoff_history_ids" readonly="1">
+                        <list>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="day_off_day"/>
+                            <field name="changed_by"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
 
             <xpath expr="//page[@name='resume']" position="replace">
@@ -200,6 +225,9 @@
         <field name="arch" type="xml">
             <xpath expr="//searchpanel" position="inside">
                 <field name="worker_type" string="Worker Type" icon="fa-user-tag" enable_counters="1"/>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="hours_last_month" string="Hours This Month"/>
             </xpath>
 
         </field>

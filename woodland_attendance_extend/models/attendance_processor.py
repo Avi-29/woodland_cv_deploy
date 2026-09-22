@@ -77,6 +77,22 @@ class ZkAttendanceProcessor(models.Model):
         return best_shift, best_windows
 
     # ------------------------------------------------------------------
+    # Auto-checkout threshold
+    # ------------------------------------------------------------------
+
+    def _auto_checkout_hours(self, employee, shift):
+        """Hours an open attendance may stay open before it's auto-closed.
+
+        Daily workers on a night (midnight-crossing) shift get a shorter
+        threshold than everyone else, since a 20h window would otherwise
+        bleed well into their next shift.
+        """
+        company = self.env.company
+        if employee.worker_type == 'daily' and shift and shift.is_night:
+            return company.attendance_daily_night_auto_checkout_hours or 13.0
+        return company.attendance_auto_checkout_hours or 20.0
+
+    # ------------------------------------------------------------------
     # Main entry point
     # ------------------------------------------------------------------
 
@@ -152,10 +168,10 @@ class ZkAttendanceProcessor(models.Model):
                 ('check_out', '!=', False),
             ], limit=1, order='check_out desc')
 
-            # If latest checkout is within 1 hour of current punch → update checkout instead of new check-in
+            # If latest checkout is within 4 hours of current punch → update checkout instead of new check-in
             if latest_closed_att:
                 diff_minutes = (punch.punch_time - latest_closed_att.check_out).total_seconds() / 60.0
-                if diff_minutes <= 60:
+                if diff_minutes <= 240:
                     latest_closed_att.write({'check_out': punch.punch_time})
                     punch.write({
                         'state': 'processed',
@@ -169,13 +185,14 @@ class ZkAttendanceProcessor(models.Model):
 
         # --- Open attendance exists ---
 
-        # Edge case: >20 h since check-in → auto-close and start fresh
+        # Edge case: too long since check-in → auto-close and start fresh
         hours_open = (punch.punch_time - open_att.check_in).total_seconds() / 3600.0
-        if hours_open > 20.0:
+        checkout_threshold = self._auto_checkout_hours(employee, open_att.shift_id)
+        if hours_open > checkout_threshold:
             open_att.write({
-                'check_out': open_att.check_in + timedelta(hours=20),
+                'check_out': open_att.check_in + timedelta(hours=checkout_threshold),
                 'marked_as_day_off': True,
-                'notes': 'Auto-closed: punch received after 20 h without checkout.',
+                'notes': f'Auto-closed: punch received after {checkout_threshold:g}h without checkout.',
             })
             self._do_checkin(punch, employee, local_punch_naive)
             return
@@ -201,12 +218,13 @@ class ZkAttendanceProcessor(models.Model):
         marked_as_day_off = False
         notes = False
 
-        if shift:
+        if shift and employee.is_late_eligible:
             if (    shift.is_morning_shift
                     and employee.department_id
                     and employee.department_id.is_morning_shift
             ):
-                late_after = windows['shift_start'] + timedelta(hours=1, minutes=15)
+                morning_grace = self.env.company.attendance_morning_late_grace_minutes or 75
+                late_after = windows['shift_start'] + timedelta(minutes=morning_grace)
             else:
                 late_after = windows['late_after']
 
@@ -230,27 +248,35 @@ class ZkAttendanceProcessor(models.Model):
     @api.model
     def cron_auto_checkout_long_attendance(self):
         now = fields.Datetime.now()
-        limit_time = now - timedelta(hours=20)
+        company = self.env.company
+        default_hours = company.attendance_auto_checkout_hours or 20.0
+        daily_night_hours = company.attendance_daily_night_auto_checkout_hours or 13.0
+        # Cast the widest possible net (the shortest threshold), then apply
+        # each attendance's own threshold below.
+        earliest_limit = now - timedelta(hours=min(default_hours, daily_night_hours))
 
         attendances = self.env['hr.attendance'].search([
             ('check_out', '=', False),
-            ('check_in', '<=', limit_time),
+            ('check_in', '<=', earliest_limit),
         ])
 
-        if not attendances:
-            return True
-
+        closed = 0
         for att in attendances:
+            threshold = self._auto_checkout_hours(att.employee_id, att.shift_id)
+            if now - att.check_in < timedelta(hours=threshold):
+                continue
             att.with_context(no_check_overlap=True).write({
-                'check_out': att.check_in + timedelta(hours=20),
+                'check_out': att.check_in + timedelta(hours=threshold),
                 'marked_as_day_off': True,
-                'notes': 'Auto Checkout: 20h limit reached (cron)',
+                'notes': f'Auto Checkout: {threshold:g}h limit reached (cron)',
             })
+            closed += 1
 
-        _logger.info(
-            'cron_auto_checkout_long_attendance: closed %d stale attendance(s)',
-            len(attendances)
-        )
+        if closed:
+            _logger.info(
+                'cron_auto_checkout_long_attendance: closed %d stale attendance(s)',
+                closed
+            )
         return True
 
     @api.constrains('check_in', 'check_out', 'employee_id')

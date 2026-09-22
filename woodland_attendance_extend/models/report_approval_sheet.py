@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models
+from odoo import _, fields, models
+from odoo.exceptions import UserError
 
 DEFAULT_SIGNATORIES = {
     'approval_sign_1': 'Sr. Manager',
@@ -15,11 +16,18 @@ class ReportApprovalSheet(models.AbstractModel):
 
     def _get_report_values(self, docids, data=None):
         data = data or {}
-        docs = self.env['hr.employee'].browse(docids)
+        docs = self.env['hr.employee.approval'].browse(docids)
+        if not docs:
+            # Printing with no record selected (e.g. hitting Print from the
+            # list view with nothing checked) used to silently render a
+            # blank, content-less PDF - t-foreach="docs" just iterates zero
+            # times. Fail loudly instead.
+            raise UserError(_('Please select at least one Employee Approval Sheet to print.'))
         values = {
             'doc_ids': docids,
-            'doc_model': 'hr.employee',
+            'doc_model': 'hr.employee.approval',
             'docs': docs,
+            'print_date': fields.Date.context_today(self).strftime('%d-%m-%Y'),
         }
         for key, default in DEFAULT_SIGNATORIES.items():
             values[key] = data.get(key) or default

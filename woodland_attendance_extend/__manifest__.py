@@ -14,10 +14,10 @@ Long description of module's purpose
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
-    'version': '0.1',
+    'version': '0.3',
 
     # any module necessary for this one to work correctly
-    'depends': ['hr','hr_attendance','zk_adms_attendance'],
+    'depends': ['hr','hr_attendance','hr_holidays','zk_adms_attendance'],
 
     # always loaded
     'data': [
@@ -31,7 +31,16 @@ Long description of module's purpose
         'views/id_card.xml',
         'wizard/id_card_batch.xml',
         'wizard/approval_sheet_wizard.xml',
+        'views/res_config_settings_views.xml',
+        'views/employee_approval_views.xml',
+        'views/ir_attachment_documents_views.xml',
         'views/menu.xml'
     ],
+
+    'assets': {
+        'web.assets_backend': [
+            'woodland_attendance_extend/static/src/js/documents_kanban/*.js',
+        ],
+    },
 }
 

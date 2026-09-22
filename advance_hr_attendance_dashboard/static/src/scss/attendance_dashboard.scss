@@ -322,6 +322,7 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
 
 // Diagonal split background
 .ahad_split_off_p { background: linear-gradient(135deg, #b0bec5 50%, #d4edda 50%) !important; }
+.ahad_split_off_p_marked { background: linear-gradient(135deg, #b0bec5 50%, #cfe3fb 50%) !important; }
 .ahad_split_ph_p  { background: linear-gradient(135deg, #a5d6a7 50%, #d4edda 50%) !important; }
 
 // Triangular hit zones — cover the full cell, clipped to each triangle
@@ -347,6 +348,8 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
 
 .ahad_split_off_p .ahad_zone_top { color: #37474f; }
 .ahad_split_off_p .ahad_zone_bot { color: #1b5e20; }
+.ahad_split_off_p_marked .ahad_zone_top { color: #37474f; }
+.ahad_split_off_p_marked .ahad_zone_bot { color: #0d47a1; }
 .ahad_split_ph_p  .ahad_zone_top { color: #1b5e20; }
 .ahad_split_ph_p  .ahad_zone_bot { color: #1b5e20; }
 

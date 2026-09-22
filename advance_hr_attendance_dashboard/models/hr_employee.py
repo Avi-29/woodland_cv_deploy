@@ -57,6 +57,68 @@ class HrEmployee(models.Model):
         return pandas.date_range(start, end, freq='D').strftime(
             "%Y-%m-%d").tolist()
 
+    def _is_effective_absent_external(self, employee, ext_date_str):
+        """Classify a single date OUTSIDE the currently displayed month
+        (the day just before the 1st, or just after the last day) as
+        effectively-absent or not, for the Sandwich Absent rule's
+        month-boundary edge case. Mirrors the same day-classification
+        priority used in get_employee_leave_data's main loop, but only
+        needs a present/absent boolean for one date, so it queries
+        directly instead of reusing the bulk per-month lookups.
+        """
+        ext_date = date.fromisoformat(ext_date_str)
+
+        has_leave = bool(self.env['hr.leave'].search_count([
+            ('employee_id', '=', employee.id),
+            ('state', '=', 'validate'),
+            ('request_date_from', '<=', ext_date_str),
+            ('request_date_to', '>=', ext_date_str),
+        ]))
+        if has_leave:
+            return False
+
+        has_swap = bool(self.env['hr.swap'].search_count([
+            ('employee_id', '=', employee.id),
+            '|',
+            ('swap_work_date', '=', ext_date_str),
+            ('swap_off_date', '=', ext_date_str),
+        ]))
+        if has_swap:
+            return False
+
+        self.env.cr.execute("""
+            SELECT 1
+            FROM   hr_attendance
+            WHERE  employee_id = %s
+              AND  (check_in AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka')::date = %s::date
+            LIMIT 1
+        """, (employee.id, ext_date_str))
+        if self.env.cr.fetchone():
+            return False
+
+        self.env.cr.execute("""
+            SELECT 1
+            FROM   resource_calendar_leaves rcl
+            WHERE  rcl.resource_id IS NULL
+              AND  %s::date BETWEEN
+                       (rcl.date_from AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka')::date
+                   AND (rcl.date_to   AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka')::date
+            LIMIT 1
+        """, (ext_date_str,))
+        is_public_holiday = bool(self.env.cr.fetchone())
+        if is_public_holiday:
+            return False
+
+        raw_dod = employee.get_day_off_day(ext_date)
+        if raw_dod:
+            try:
+                if ext_date.weekday() == int(raw_dod):
+                    return False  # scheduled weekly off, not an absence
+            except ValueError:
+                pass
+
+        return True  # no leave, no swap, no attendance, not a scheduled non-working day
+
     # ── leave types available (for popup dropdowns) ───────────────────────────
     @api.model
     def get_leave_types(self):
@@ -280,14 +342,11 @@ class HrEmployee(models.Model):
             emp_swaps = swaps_by_emp.get(employee.id, {
                 'work_dates': set(), 'off_dates': set(), 'off_to_work': {}
             })
-
-            day_off_idx = None
-            raw_dod = getattr(employee, 'day_off_day', None)
-            if raw_dod:
-                try:
-                    day_off_idx = int(raw_dod)
-                except ValueError:
-                    pass
+            # Current day-off, for the summary field below (not date-specific).
+            current_day_off_raw = employee.day_off_day
+            # One query for the whole month instead of one per date below.
+            day_off_map = employee.get_day_off_day_map(
+                date.fromisoformat(dates[0]), date.fromisoformat(dates[-1]))
 
             # Build leave_date_map: date string → (code, color, leave_id, type_name)
             leave_date_map = {}
@@ -310,10 +369,17 @@ class HrEmployee(models.Model):
             leave_data = []
             total_absent_count = 0
             total_present_count = 0
-            genuine_present_count = 0  # actual worked days — used by the sandwich-absent gate below
             for d in dates:
                 weekday = date.fromisoformat(d).weekday()  # 0=Mon … 6=Sun
                 is_future = d > today_str  # day hasn't happened yet (Asia/Dhaka)
+
+                day_off_idx = None
+                raw_dod = day_off_map[date.fromisoformat(d)]
+                if raw_dod:
+                    try:
+                        day_off_idx = int(raw_dod)
+                    except ValueError:
+                        pass
 
                 if d in leave_date_map:
                     code, color, leave_id, lt_name = leave_date_map[d]
@@ -349,7 +415,7 @@ class HrEmployee(models.Model):
                             'leave_date': d,
                             'state': 'PH',
                             'color': '#c8e6c9',
-                            'record_type': None,
+                            'record_type': 'holiday',
                             'record_id': None,
                             'tooltip': public_holidays[d],
                         })
@@ -358,7 +424,6 @@ class HrEmployee(models.Model):
 
                 elif d in emp_swaps['off_dates']:
                     total_present_count += 1
-                    genuine_present_count += 1
                     co_work_date = emp_swaps['off_to_work'].get(d, '')
                     leave_data.append({
                         'leave_date': d,
@@ -385,7 +450,10 @@ class HrEmployee(models.Model):
                             'record_type': 'attendance',
                             'record_id': emp_att[d],
                             'is_day_off_or_holiday': True,
-                            'tooltip': 'Weekly Day Off – Present (OT/Swap eligible) – click to view attendance',
+                            'marked_as_day_off': d in emp_dayoff,
+                            'tooltip': 'Weekly Day Off – Present (OT/Swap eligible)'
+                                       + (' – Marked as Day Off' if d in emp_dayoff else '')
+                                       + ' – click to view attendance',
                         })
                     else:
                         leave_data.append({
@@ -401,7 +469,7 @@ class HrEmployee(models.Model):
                     if d in emp_dayoff:
                         leave_data.append({
                             'leave_date': d,
-                            'state': 'OFF',
+                            'state': present_mark,
                             'color': '#0000FF',
                             'record_type': 'attendance',
                             'record_id': emp_att[d],
@@ -417,7 +485,6 @@ class HrEmployee(models.Model):
                             'tooltip': 'Late – click to view',
                         })
                         total_present_count += 1
-                        genuine_present_count += 1
                     else:
                         leave_data.append({
                             'leave_date': d,
@@ -428,7 +495,6 @@ class HrEmployee(models.Model):
                             'tooltip': 'Present – click to view',
                         })
                         total_present_count += 1
-                        genuine_present_count += 1
 
                 else:
                     leave_data.append({
@@ -443,48 +509,63 @@ class HrEmployee(models.Model):
                         total_absent_count += 1
 
             # ── Sandwich Absent rule (mirrors enterprise_shift_payroll) ─────
-            # A weekly day-off with no attendance is also counted as absent
-            # when both its neighbouring days are genuine absences, or —
-            # if the employee barely showed up this month (fewer than 6
-            # actually-worked days) — every weekly day-off is treated as
-            # absent outright, same threshold/logic as payroll payslips.
-            if day_off_idx is not None:
-                MIN_PRESENT_FOR_DAY_OFF_PASS = 6
-                barely_present = genuine_present_count < MIN_PRESENT_FOR_DAY_OFF_PASS
-                by_date = {ld['leave_date']: ld for ld in leave_data}
+            # An un-worked weekly day-off OR an un-worked public holiday is
+            # also counted as absent when both its neighbouring days are
+            # genuine absences. Neighbours outside the viewed month (the
+            # 1st/last day's boundary) are looked up directly via
+            # _is_effective_absent_external instead of being skipped, so
+            # there's no need for a "barely present this month → sandwich
+            # everything" blanket fallback the way payroll's month-scoped
+            # calculation once needed one — every day-off/holiday here
+            # always gets judged on its own actual neighbours.
+            by_date = {ld['leave_date']: ld for ld in leave_data}
 
-                def _is_effective_absent(dd):
-                    entry = by_date.get(dd)
-                    return bool(entry) and entry['record_type'] == 'absent'
+            def _is_effective_absent(dd):
+                entry = by_date.get(dd)
+                return bool(entry) and entry['record_type'] == 'absent'
 
-                for d in dates:
-                    if d > today_str:
-                        continue  # don't sandwich a day that hasn't happened yet
-                    if date.fromisoformat(d).weekday() != day_off_idx:
-                        continue
-                    entry = by_date[d]
-                    if entry['record_type'] != 'dayoff':
-                        continue  # only a plain, un-worked weekly off can be flipped
+            for d in dates:
+                if d > today_str:
+                    continue  # don't sandwich a day that hasn't happened yet
+                entry = by_date[d]
+                # Only a plain, un-worked weekly off or un-worked public
+                # holiday can be flipped to Sandwich Absent.
+                if entry['record_type'] not in ('dayoff', 'holiday'):
+                    continue
 
-                    if barely_present:
-                        sandwich = True
-                    else:
-                        prev_d = (date.fromisoformat(d) - timedelta(days=1)).isoformat()
-                        next_d = (date.fromisoformat(d) + timedelta(days=1)).isoformat()
-                        sandwich = (
-                            prev_d in by_date and next_d in by_date
-                            and _is_effective_absent(prev_d) and _is_effective_absent(next_d)
-                        )
+                prev_d = (date.fromisoformat(d) - timedelta(days=1)).isoformat()
+                next_d = (date.fromisoformat(d) + timedelta(days=1)).isoformat()
 
-                    if sandwich:
-                        entry.update({
-                            'state': absent_mark,
-                            'color': '#fff3cd',
-                            'is_sandwich_absent': True,
-                            'tooltip': 'Sandwich Absent – weekly off between two absent days (payroll rule) – click to request swap',
-                        })
-                        total_present_count -= 1
-                        total_absent_count += 1
+                # Edge case: the 1st/last day of the viewed month has no
+                # neighbour inside `dates` — look at the previous month's
+                # last day / next month's first day instead of silently
+                # skipping the check.
+                if prev_d in by_date:
+                    prev_absent = _is_effective_absent(prev_d)
+                else:
+                    prev_absent = self._is_effective_absent_external(employee, prev_d)
+
+                if next_d in by_date:
+                    next_absent = _is_effective_absent(next_d)
+                else:
+                    next_absent = self._is_effective_absent_external(employee, next_d)
+
+                sandwich = prev_absent and next_absent
+
+                if sandwich:
+                    is_holiday_cell = entry['record_type'] == 'holiday'
+                    entry.update({
+                        'state': absent_mark,
+                        'color': '#fff3cd',
+                        'is_sandwich_absent': True,
+                        'tooltip': (
+                            'Sandwich Absent – public holiday between two absent days (payroll rule) – click to view'
+                            if is_holiday_cell else
+                            'Sandwich Absent – weekly off between two absent days (payroll rule) – click to request swap'
+                        ),
+                    })
+                    total_present_count -= 1
+                    total_absent_count += 1
 
             employee_data.append({
                 'id': employee.id,
@@ -492,7 +573,7 @@ class HrEmployee(models.Model):
                 'zk_badge_no': employee.zk_badge_no or '',
                 'department': employee.department_id.name if employee.department_id else '—',
                 'department_id': employee.department_id.id if employee.department_id else None,
-                'day_off': DAY_OFF_MAP.get(str(raw_dod) if raw_dod else '', ''),
+                'day_off': DAY_OFF_MAP.get(str(current_day_off_raw) if current_day_off_raw else '', ''),
                 'is_present_today': today_str in emp_att,
                 'leave_data': leave_data[::-1],
                 'total_absent_count': total_absent_count,
@@ -587,24 +668,27 @@ class HrEmployee(models.Model):
             emp_leave_days = leave_days_by_emp.get(employee.id, set())
             emp_att_days = att_days_by_emp.get(employee.id, set())
             emp_swaps = swaps_by_emp.get(employee.id, {'work_dates': set(), 'off_dates': set()})
-            day_off_idx = None
-            raw_dod = getattr(employee, 'day_off_day', None)
-            if raw_dod:
-                try:
-                    day_off_idx = int(raw_dod)
-                except ValueError:
-                    pass
+            # One query for the whole range instead of one per date below.
+            day_off_map = employee.get_day_off_day_map(date_from, date_to)
 
             absent_count = 0
             for d in dates:
                 if d in emp_leave_days or d in emp_att_days:
                     continue
-                weekday = date.fromisoformat(d).weekday()
+                d_date = date.fromisoformat(d)
+                weekday = d_date.weekday()
                 if (getattr(employee, 'worker_type', None) != 'daily'
                         and d in public_holidays and d not in emp_swaps['work_dates']):
                     continue
                 if d in emp_swaps['off_dates']:
                     continue
+                day_off_idx = None
+                raw_dod = day_off_map[d_date]
+                if raw_dod:
+                    try:
+                        day_off_idx = int(raw_dod)
+                    except ValueError:
+                        pass
                 if (day_off_idx is not None and weekday == day_off_idx
                         and d not in emp_swaps['work_dates']):
                     continue

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ── Form View ─────────────────────────────────────────────────────── -->
+    <record id="view_hr_employee_approval_form" model="ir.ui.view">
+        <field name="name">hr.employee.approval.form</field>
+        <field name="model">hr.employee.approval</field>
+        <field name="arch" type="xml">
+            <form string="Employee Approval Sheet">
+                <header>
+                    <button name="action_approve" string="Approve" type="object"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_reject" string="Reject" type="object"
+                            invisible="state != 'draft'"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" type="object"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Applicant Name"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Personal Info">
+                            <field name="father_name"/>
+                            <field name="mother_name"/>
+                            <field name="date_of_birth"/>
+                            <field name="present_age" readonly="1"/>
+                            <field name="mobile_no"/>
+                            <field name="identification_id"/>
+                            <field name="educational_qualification"/>
+                        </group>
+                        <group string="Recruitment">
+                            <field name="department_id"/>
+                            <field name="applied_job_id"/>
+                            <field name="applied_salary"/>
+                            <field name="approved_job_id"/>
+                            <field name="approved_salary"/>
+                            <field name="examination_result"/>
+                            <field name="introducer"/>
+                            <field name="joining_date"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Permanent Address">
+                            <field name="permanent_address"/>
+                            <field name="permanent_post_office"/>
+                            <field name="permanent_thana"/>
+                            <field name="permanent_district"/>
+                        </group>
+                        <group string="Present Address">
+                            <field name="present_address"/>
+                            <field name="present_post_office"/>
+                            <field name="present_thana"/>
+                            <field name="present_district"/>
+                        </group>
+                    </group>
+
+                    <group string="Approval" invisible="state == 'draft'">
+                        <field name="employee_id" readonly="1"/>
+                        <field name="approved_by" readonly="1"/>
+                        <field name="approved_date" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── List View ─────────────────────────────────────────────────────── -->
+    <record id="view_hr_employee_approval_list" model="ir.ui.view">
+        <field name="name">hr.employee.approval.list</field>
+        <field name="model">hr.employee.approval</field>
+        <field name="arch" type="xml">
+            <list string="Employee Approval Sheets">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="applied_job_id"/>
+                <field name="approved_job_id" optional="show"/>
+                <field name="mobile_no" optional="show"/>
+                <field name="joining_date" optional="show"/>
+                <field name="employee_id"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'approved'"
+                       decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Search View ───────────────────────────────────────────────────── -->
+    <record id="view_hr_employee_approval_search" model="ir.ui.view">
+        <field name="name">hr.employee.approval.search</field>
+        <field name="model">hr.employee.approval</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="applied_job_id"/>
+                <field name="mobile_no"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="rejected" string="Rejected" domain="[('state','=','rejected')]"/>
+                <separator/>
+                <filter name="by_department" string="Section" context="{'group_by':'department_id'}"/>
+                <filter name="by_state" string="Status" context="{'group_by':'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Action ────────────────────────────────────────────────────────── -->
+    <record id="action_hr_employee_approval" model="ir.actions.act_window">
+        <field name="name">Employee Approval Sheets</field>
+        <field name="res_model">hr.employee.approval</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_hr_employee_approval_search"/>
+        <field name="context">{'search_default_draft': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Employee Approval Sheet
+            </p>
+            <p>
+                Capture applicant details, get them approved, and create the
+                Employee record automatically.
+            </p>
+        </field>
+    </record>
+
+    <!-- ── Root Menu ─────────────────────────────────────────────────────── -->
+    <menuitem id="menu_employee_approval_root"
+              name="Employee Approval"
+              web_icon="woodland_attendance_extend,static/description/icon.png"
+              sequence="60"/>
+
+    <menuitem id="menu_employee_approval"
+              name="Approval Sheets"
+              parent="menu_employee_approval_root"
+              action="action_hr_employee_approval"
+              sequence="1"/>
+
+</odoo>
