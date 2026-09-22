@@ -488,6 +488,11 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
     week_date     = fields.Date(required=True, default=fields.Date.today, string='Any Date in the Week')
     department_id = fields.Many2one('hr.department', string='Department')
     shift_id      = fields.Many2one('hr.shift',      string='Shift')
+    sex           = fields.Selection([
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ], string='Gender', help='Leave empty to include all genders')
 
     include_bonus = fields.Boolean(string='Add Bonus', default=False)
     bonus_month   = fields.Date(
@@ -576,6 +581,8 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
             domain.append(('department_id', '=', self.department_id.id))
         if self.shift_id:
             domain.append(('shift_id', '=', self.shift_id.id))
+        if self.sex:
+            domain.append(('employee_id.sex', '=', self.sex))
 
         records = self.env['daily.payroll'].search(domain, order='employee_id, work_date')
 
@@ -681,6 +688,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         title_str = (
             f"Weekly Payroll Report  |  "
             f"{thursday.strftime('%d %b')} – {wednesday.strftime('%d %b %Y')}"
+            + (f"  |  {dict(self._fields['sex'].selection).get(self.sex)}" if self.sex else "")
             + (f"  |  Bonus: {self.bonus_month.strftime('%B %Y')}  (>{self.BONUS_THRESHOLD} days → ৳{self.BONUS_AMOUNT:,.0f})" if self.include_bonus else "")
         )
         ws.merge_range(0, 0, 1, total_cols - 1, title_str, title_fmt)
@@ -980,6 +988,7 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
             f"weekly_payroll_{thursday}_{wednesday}"
             f"{'_' + self.department_id.name.replace(' ', '_') if self.department_id else ''}"
             f"{'_' + self.shift_id.name.replace(' ', '_') if self.shift_id else ''}"
+            f"{'_' + self.sex if self.sex else ''}"
             f"{'_bonus_' + self.bonus_month.strftime('%Y%m') if self.include_bonus else ''}"
             f".xlsx"
         )

@@ -71,6 +71,7 @@
                     <field name="week_date"
                            help="Pick any date in the week — the report will cover Thu–Wed of that week."/>
                     <field name="department_id" placeholder="All Departments"/>
+                    <field name="sex" placeholder="All Genders"/>
                     <field name="include_bonus" />
                     <field name="bonus_month" required="include_bonus=='True'" options="{'min_precision': 'months'}" invisible="not include_bonus"/>
 
