@@ -25,6 +25,12 @@ class HrApprovalSheetWizard(models.TransientModel):
             raise UserError(_('No Employee Approval Sheet selected to print.'))
         report = self.env.ref('woodland_attendance_extend.action_report_approval_sheet')
         return report.report_action(sheets, data={
+            # The web client's getReportUrl() drops active_ids from the
+            # download request whenever report_action() is given non-empty
+            # data (as it does here, for the signatory fields) - it expects
+            # the ids inside data instead. See report_approval_sheet.py's
+            # _get_report_values, which reads this back.
+            'ids': sheets.ids,
             'approval_sign_1': self.sign_1,
             'approval_sign_2': self.sign_2,
             'approval_sign_3': self.sign_3,

@@ -322,7 +322,7 @@
                         <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
                              style="max-height:90px; max-width:320px;" alt="Company Logo"/>
                         <h2 t-else="" style="font-weight:bold; margin:0;"><t t-esc="company.name or 'H &amp; S Glassware Ltd'"/></h2>
-                        <p style="margin:0; font-size:15px;">150, Moshan, Mirpur, Kushtia.</p>
+                        <p style="margin:0; font-size:15px;">Dadarpur Road, Jugia, Kushtia.</p>
                     </div>
 
                     <h4 style="text-align:center; font-weight:bold; margin:16px 0;">Employment Approval Note Sheet</h4>

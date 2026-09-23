@@ -16,6 +16,14 @@ class ReportApprovalSheet(models.AbstractModel):
 
     def _get_report_values(self, docids, data=None):
         data = data or {}
+        # The web client's getReportUrl() only puts active_ids in the report
+        # download request when the report_action() call was given an EMPTY
+        # data dict — once data is non-empty (as it is here, for the
+        # signatory fields), it assumes the caller put the ids inside data
+        # itself and drops active_ids from the request entirely, so docids
+        # arrives here as None. Fall back to data['ids'], which the wizard
+        # sets for exactly this reason.
+        docids = docids or data.get('ids')
         docs = self.env['hr.employee.approval'].browse(docids)
         if not docs:
             # Printing with no record selected (e.g. hitting Print from the
