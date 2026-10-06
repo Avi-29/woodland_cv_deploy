@@ -18,9 +18,19 @@ OPLOG/USERPIC/DEL_USER/DEL_FP lines are NOT queued here — they're low
 volume and stay handled inline in the controller.
 """
 from odoo import models, fields, api
+from psycopg2 import errors as pg_errors
 import logging
 
 _logger = logging.getLogger(__name__)
+
+# Another transaction (usually a USERPIC push from the controller) touched the
+# same zk.enrolled.user row. Not a data problem — the row should simply be
+# retried on the next cron run instead of being parked as 'error'.
+CONCURRENCY_ERRORS = (
+    pg_errors.SerializationFailure,
+    pg_errors.LockNotAvailable,
+    pg_errors.DeadlockDetected,
+)
 
 
 def _parse_kv_line(line: str) -> dict:
@@ -60,6 +70,11 @@ class ZkOperlogRaw(models.Model):
         self.write({'state': 'new', 'error_msg': False})
 
     def _mark_error(self, row, exc):
+        if isinstance(exc, CONCURRENCY_ERRORS):
+            # Leave it 'new' so the next run picks it up again.
+            _logger.info('ZK OPERLOG row %s (%s): concurrent update, will retry next run',
+                         row.id, row.record_type)
+            return
         _logger.warning('ZK OPERLOG row %s (%s): %s', row.id, row.record_type, exc)
         try:
             row.write({'state': 'error', 'error_msg': str(exc)[:250]})
@@ -78,8 +93,13 @@ class ZkOperlogRaw(models.Model):
         if not rows:
             return
 
+        # Commit after each group so row locks on zk.enrolled.user are held
+        # briefly — a single transaction over the whole batch is what made
+        # USERPIC pushes collide with this cron.
         self._process_user_rows(rows.filtered(lambda r: r.record_type == 'USER'))
+        self.env.cr.commit()
         self._process_fp_rows(rows.filtered(lambda r: r.record_type == 'FP'))
+        self.env.cr.commit()
         self._process_face_rows(rows.filtered(lambda r: r.record_type == 'FACE'))
 
     # ------------------------------------------------------------------
