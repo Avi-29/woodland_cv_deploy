@@ -15,6 +15,7 @@ Heartbeat / command dispatch:
 """
 
 import logging
+from psycopg2 import errors as pg_errors
 from odoo import http, fields
 from odoo.http import request, Response
 
@@ -254,6 +255,14 @@ class AdmsController(http.Controller):
             with request.env.cr.savepoint():
                 employee = request.env['hr.employee'].sudo().get_by_badge(pin)
                 if employee:
+                    current = employee.image_1920 or b''
+                    if isinstance(current, bytes):
+                        current = current.decode('ascii')
+                    if current == content:
+                        # Device echoing back the photo we already have (e.g.
+                        # after a sync pushed it out) — skip the write so it
+                        # doesn't contend for the employee row lock.
+                        return
                     # This write clears photo_synced_device_ids on every device
                     # (see hr_employee.py's write() override) since the photo is
                     # changing — then immediately mark the source device as
@@ -266,6 +275,13 @@ class AdmsController(http.Controller):
                     _logger.debug('ZK USERPIC: stored photo for employee %s (PIN=%s)', employee.name, pin)
                 else:
                     _logger.debug('ZK USERPIC: no employee found for PIN=%s', pin)
+        except (pg_errors.SerializationFailure, pg_errors.LockNotAvailable,
+                pg_errors.DeadlockDetected):
+            # Concurrent update on the employee row (attendance punch, another
+            # device pushing the same photo, ...). Let it propagate so Odoo's
+            # request-level retry reruns the whole push instead of silently
+            # dropping the photo.
+            raise
         except Exception as e:
             _logger.warning('ZK USERPIC: failed to save photo PIN=%s: %s', pin, e)
 
