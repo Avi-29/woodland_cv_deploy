@@ -7,9 +7,9 @@ class HrApprovalSheetWizard(models.TransientModel):
     _name = 'hr.approval.sheet.wizard'
     _description = 'Choose Approval Sheet Signatories'
 
-    sign_1 = fields.Char(string='1st Signatory', default='Sr. Manager', required=True)
-    sign_2 = fields.Char(string='2nd Signatory', default='D.G.M (Production)', required=True)
-    sign_3 = fields.Char(string='3rd Signatory', default='General Manager', required=True)
+    sign_1 = fields.Char(string='1st Signatory', default='Sr. Manager (Admin)', required=True)
+    sign_2 = fields.Char(string='2nd Signatory', default='D.G.M (Admin & Finance)', required=True)
+    sign_3 = fields.Char(string='3rd Signatory', default='Director', required=True)
     sign_4 = fields.Char(string='4th Signatory', default='Managing Director', required=True)
 
     def action_print_approval_sheet(self):
