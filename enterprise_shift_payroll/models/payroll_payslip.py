@@ -66,6 +66,7 @@ class PayrollPayslip(models.Model):
 
     # ── identity ──────────────────────────────────────────────────────
     employee_id = fields.Many2one('hr.employee', string='Employee', required=True, index=True)
+    zk_badge_no = fields.Char(related='employee_id.zk_badge_no', string='Badge No')
     company_id = fields.Many2one(
         'res.company', string='Company',
         default=lambda self: self.env.company,
@@ -471,8 +472,13 @@ class PayrollPayslip(models.Model):
         unpaid_ded  = stats['unpaid_leave_days'] * per_day
         total_ded   = absent_ded + late_ded + unpaid_ded
 
-        is_dept_manager = bool(
-            employee.department_id and employee.department_id.manager_id == employee
+        # No bonus for the department's Manager or anyone listed in its
+        # "Managers (No Bonus)" — checked against the employee's CURRENT
+        # department only, so a transfer automatically drops the exclusion.
+        # The 2× absent cut above still applies to them.
+        dept = employee.department_id
+        is_dept_manager = bool(dept) and (
+            dept.manager_id == employee or employee in dept.bonus_excluded_manager_ids
         )
         bonus = 0.0
         if dept_eligible and not is_dept_manager:
@@ -1461,9 +1467,21 @@ class ImportPayslipsWizard(models.TransientModel):
             'bold': True, 'font_name': 'Calibri', 'font_size': 9,
             'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True,
         })
+        # Same as hdr_fmt but rotated 90° (text reads bottom-to-top) for the
+        # narrow text columns listed in ROTATED_HDRS below.
+        hdr_rot_fmt = wb.add_format({
+            'bold': True, 'font_name': 'Calibri', 'font_size': 9,
+            'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True,
+            'rotation': 90,
+        })
         cell_fmt = wb.add_format({
             'align': 'center',
             'font_name': 'Calibri', 'font_size': 10, 'border': 1, 'valign': 'vcenter'
+        })
+        cell_rot_fmt = wb.add_format({
+            'align': 'center',
+            'font_name': 'Calibri', 'font_size': 10, 'border': 1, 'valign': 'vcenter',
+            'text_wrap': True, 'rotation': 90,
         })
         num_fmt = wb.add_format({
             'align': 'center',
@@ -1486,9 +1504,10 @@ class ImportPayslipsWizard(models.TransientModel):
         # Column layout matches the "GLASSWARE SALARY ... MAIN" register
         # exactly, A-Z (labels, order and widths, including its own
         # spelling of "CONVENCE"/"QUALIFICLATION"/"Attendes incentive"):
-        #   TAX and EDU. QUALIFICLATION have no source in Odoo yet -> left
-        #   blank for manual entry, same as this file's own "Income"/"PF"
-        #   columns on the Summary sheet.
+        #   TAX has no source in Odoo yet -> left blank for manual entry,
+        #   same as this file's own "Income"/"PF" columns on the Summary
+        #   sheet. EDU. QUALIFICLATION comes from the employee's Field of
+        #   Study (study_field).
         COLS = [
             'SER NO', 'ID NO', 'NAME', 'DESIGNATION', 'JOINING DATE',
             'EDU. QUALIFICLATION', 'SECTION', 'TOTAL WORKING DAYS', 'ABSENT',
@@ -1502,6 +1521,12 @@ class ImportPayslipsWizard(models.TransientModel):
                   6.35, 5.85, 5.5, 5.17, 4.17, 3.85, 4.5, 8.67, 8.85, 8.5,
                   5.85, 7.85, 7.85, 6.5, 8.35, 9.35, 15.85]
         IDX = {label: i for i, label in enumerate(COLS)}
+        ROTATED_HDRS = {'DESIGNATION', 'JOINING DATE', 'EDU. QUALIFICLATION', 'SECTION'}
+        # Tall enough for the longest rotated label on one line.
+        HDR_ROW_HEIGHT = 95
+
+        def _hdr_fmt_for(label):
+            return hdr_rot_fmt if label in ROTATED_HDRS else hdr_fmt
 
         sheet_label = month_start.strftime('%b %Y')[:31]
         ws = wb.add_worksheet(sheet_label)
@@ -1522,9 +1547,9 @@ class ImportPayslipsWizard(models.TransientModel):
         ws.write(0, IDX['Net Pay'], 'PAYABLE', hdr_fmt)
         ws.write(0, IDX['SIG'], f'YEAR-{month_start.year}', hdr_fmt)
 
-        ws.set_row(1, 44)
+        ws.set_row(1, HDR_ROW_HEIGHT)
         for c, h in enumerate(COLS):
-            ws.write(1, c, h, hdr_fmt)
+            ws.write(1, c, h, _hdr_fmt_for(h))
 
         attendance_wizard = self.env['payroll.attendance.export.wizard']
 
@@ -1532,7 +1557,7 @@ class ImportPayslipsWizard(models.TransientModel):
             """Everything derived (not stored directly on the payslip)
             needed for one row of this export:
               - total_wd   : TOTAL WORKING DAYS = calendar days in period
-              - absent_col : ABSENT = genuine (no-show) absent + LWP days
+              - absent_col : ABSENT = absent + LWP + approved leave (CL+SL)
               - leave_approve : LEAVE APPROVED = CL + SL days
               - pay_days   : same formula as the Attendance export, plus
                              last month's adjustment day count
@@ -1575,7 +1600,9 @@ class ImportPayslipsWizard(models.TransientModel):
 
             return {
                 'total_wd': total_wd,
-                'absent_col': slip.genuine_absent_days + slip.lwp_days + slip.sandwich_absent_days,
+                # ABSENT now counts approved leave (CL+SL) too, so the
+                # row reads TOTAL - ABSENT + LEAVE APPROVED = PAY DAYS.
+                'absent_col': act_absent,
                 'leave_approve': leave_approve,
                 'pay_days': pay_days,
                 'advance': advance,
@@ -1586,16 +1613,23 @@ class ImportPayslipsWizard(models.TransientModel):
 
         def _write_slip_row(target_ws, r, sl_no, slip, calc, last_month_days):
             emp = slip.employee_id
-            target_ws.set_row(r, 22)
+            joining = emp.contract_date_start or emp.joining_date
+            rotated_vals = {
+                'DESIGNATION': emp.job_title or '',
+                'JOINING DATE': joining.strftime('%d-%m-%Y') if joining else '',
+                'EDU. QUALIFICLATION': emp.study_field or '',
+                'SECTION': emp.department_id.name or '',
+            }
+            # Rotated text runs along the row height, so size the row to the
+            # longest rotated value (~5.5pt per char at 10pt, wrapping past
+            # 120pt into the column width instead of growing further).
+            longest = max((len(v) for v in rotated_vals.values()), default=0)
+            target_ws.set_row(r, min(max(22, longest * 5.5 + 8), 120))
             target_ws.write(r, IDX['SER NO'], sl_no,                       cell_fmt)
             target_ws.write(r, IDX['ID NO'], emp.zk_badge_no or '',        cell_fmt)
             target_ws.write(r, IDX['NAME'], emp.name or '',                 cell_fmt)
-            target_ws.write(r, IDX['DESIGNATION'], emp.job_title or '',     cell_fmt)
-            target_ws.write(r, IDX['JOINING DATE'],
-                             emp.contract_date_start.strftime('%d-%m-%Y') if emp.contract_date_start else '',
-                             cell_fmt)
-            target_ws.write(r, IDX['EDU. QUALIFICLATION'], '',              cell_fmt)
-            target_ws.write(r, IDX['SECTION'], emp.department_id.name or '', cell_fmt)
+            for label, val in rotated_vals.items():
+                target_ws.write(r, IDX[label], val,                        cell_rot_fmt)
             target_ws.write(r, IDX['TOTAL WORKING DAYS'], calc['total_wd'], cell_fmt)
             target_ws.write(r, IDX['ABSENT'], calc['absent_col'],          cell_fmt)
             target_ws.write(r, IDX['LEAVE APPROVED'], calc['leave_approve'], cell_fmt)
@@ -1788,8 +1822,8 @@ class ImportPayslipsWizard(models.TransientModel):
 
         zrow = 2
         for c, h in enumerate(COLS):
-            zw.write(zrow, c, h, hdr_fmt)
-        zw.set_row(zrow, 42)
+            zw.write(zrow, c, h, _hdr_fmt_for(h))
+        zw.set_row(zrow, HDR_ROW_HEIGHT)
         zrow += 1
 
         low_totals = {

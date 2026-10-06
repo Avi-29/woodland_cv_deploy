@@ -270,3 +270,22 @@ class HrDepartment(models.Model):
         help='If enabled, absent employees in this department lose 2 days salary '
              'per absence (instead of 1). Perfect attendance earns a 500 bonus.',
     )
+    bonus_excluded_manager_ids = fields.Many2many(
+        'hr.employee', 'hr_department_bonus_excluded_rel',
+        'department_id', 'employee_id',
+        string='Managers (No Bonus)',
+        domain="[('department_id', '=', id)]",
+        help='Managers of this department who never get the attendance bonus '
+             '(in addition to the department Manager). They still lose 2 days '
+             'salary per absence. Only applies while the employee belongs to '
+             'this department.',
+    )
+
+
+class HrLeave(models.Model):
+    _inherit = 'hr.leave'
+
+    # Own field (not employee_id with a filter_domain) so the Time Off
+    # search views' xpaths on the first employee_id field still hit the
+    # real Employee field. Related fields are searchable without storing.
+    zk_badge_no = fields.Char(related='employee_id.zk_badge_no', string='Badge No')

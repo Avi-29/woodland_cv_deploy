@@ -13,7 +13,7 @@
                             type="object"
                             string="Remove Late"
                             class="btn-primary"
-                            groups="hr.group_hr_manager"
+                            groups="woodland_attendance_extend.group_hr_super_admin"
                             confirm="Clear the Late flag for the selected record(s)?"
                     />
                 </header>
@@ -56,6 +56,17 @@
                         type="object"
                         class="btn-secondary"
                         invisible="overtime_status not in ['to_approve'] "/>
+
+                <!-- Remove Late (same action as the list header button),
+                     only on late records -->
+                <field name="is_late" invisible="1"/>
+                <button name="action_remove_late_attendance"
+                        string="Remove Late"
+                        type="object"
+                        class="btn-secondary"
+                        groups="woodland_attendance_extend.group_hr_super_admin"
+                        invisible="not is_late"
+                        confirm="Clear the Late flag for this record?"/>
 
             </xpath>
             <xpath expr="//field[@name='check_out']" position="after">
@@ -463,6 +474,20 @@
         (0, 0, {'view_mode': 'list', 'view_id': ref('view_attendance_ot_approval_tree')})
     ]"/>
     </record>
+    <!-- Time Off: Badge No as the first (default) search field. Also
+         applies to the My/Manager/Report search views, which are primary
+         children of this one. -->
+    <record id="hr_leave_search_inherit_badge" model="ir.ui.view">
+        <field name="name">hr.leave.search.inherit.badge</field>
+        <field name="model">hr.leave</field>
+        <field name="inherit_id" ref="hr_holidays.view_hr_holidays_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_id']" position="before">
+                <field name="zk_badge_no"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="hr_department_form_inherit_morning_shift" model="ir.ui.view">
         <field name="name">hr.department.form.inherit.morning.shift</field>
         <field name="model">hr.department</field>
@@ -473,6 +498,8 @@
             <xpath expr="//field[@name='color']" position="before">
                 <field name="is_morning_shift"/>
                 <field name="eligible_for_bonus"/>
+                <field name="bonus_excluded_manager_ids" widget="many2many_tags"
+                       invisible="not eligible_for_bonus"/>
             </xpath>
 
         </field>

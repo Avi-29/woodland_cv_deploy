@@ -346,10 +346,34 @@
         </field>
     </record>
 
+    <!-- Badge No first so typing an ID in the search bar defaults to it -->
+    <record id="view_payroll_payslip_search" model="ir.ui.view">
+        <field name="name">payroll.payslip.search</field>
+        <field name="model">payroll.payslip</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="zk_badge_no"/>
+                <field name="employee_id"/>
+                <field name="employee_id" string="Department"
+                       filter_domain="[('employee_id.department_id', 'ilike', self)]"/>
+                <field name="payroll_month" string="Month"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="computed" string="Computed" domain="[('state', '=', 'computed')]"/>
+                <filter name="validated" string="Validated" domain="[('state', '=', 'validated')]"/>
+                <filter name="paid" string="Paid" domain="[('state', '=', 'paid')]"/>
+                <separator/>
+                <filter name="by_month" string="Month" context="{'group_by': 'payroll_month:month'}"/>
+                <filter name="by_state" string="Status" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="action_payroll_payslip" model="ir.actions.act_window">
         <field name="name">All Payslips</field>
         <field name="res_model">payroll.payslip</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_payroll_payslip_search"/>
     </record>
 
 </odoo>

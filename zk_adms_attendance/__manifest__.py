@@ -11,6 +11,7 @@
         'wizard/zk_export_wizard_views.xml',
         'wizard/zk_wizard_views.xml',
         'views/hr_employee_views.xml',
+        'views/employee_departure_history_views.xml',
         'views/zk_device_views.xml',
         'views/zk_attendance_views.xml',
         'views/zk_enrolled_views.xml',

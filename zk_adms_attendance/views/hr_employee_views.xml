@@ -65,6 +65,10 @@
                     </div>
                 </page>
                 <page string="Departure History" name="zk_departure_history">
+                    <!-- Read-only reference here for everyone — it's a system-maintained
+                         audit log. HR Managers correct/delete a bad entry from the
+                         standalone "Departure History" menu (ZKTeco ADMS app) instead,
+                         which shows this data across all employees, not just this one. -->
                     <field name="zk_departure_history_ids" nolabel="1" readonly="1">
                         <list create="false" delete="false">
                             <field name="event_date"/>
@@ -107,6 +111,19 @@
                        decoration-info="hr_icon_display in ('presence_holiday_present','presence_holiday_absent')"
                        decoration-muted="hr_icon_display in ('presence_archive','presence_undetermined')"/>
 
+            </xpath>
+        </field>
+    </record>
+    <record id="view_employee_list_inherit_zk" model="ir.ui.view">
+        <field name="name">hr.employee.list.zk</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="zk_badge_no" string="ID No" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='job_id']" position="after">
+                <field name="job_title" optional="show"/>
             </xpath>
         </field>
     </record>

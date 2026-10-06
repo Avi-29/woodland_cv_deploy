@@ -41,6 +41,9 @@ class HrEmployeeWageChangeWizard(models.TransientModel):
         self.ensure_one()
         employee = self.employee_id
 
+        if self.mode == 'change' and not self.env.user.has_group(
+                'woodland_attendance_extend.group_hr_super_admin'):
+            raise UserError(_("Only HR Super Admin can change an employee's wage."))
         if self.mode == 'set' and employee.wage:
             raise UserError(_(
                 "%s already has a wage set. Use Change Wage instead.",

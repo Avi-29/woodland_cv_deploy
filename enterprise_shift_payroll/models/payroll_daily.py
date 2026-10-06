@@ -330,27 +330,32 @@ class DailyPayrollExcelWizard(models.TransientModel):
                                      'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
         grp_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 12,
                                      'bg_color': '#D9E1F2', 'border': 1,
-                                     'align': 'center', 'valign': 'vcenter'})
-        cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1, 'valign': 'vcenter'})
+                                     'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
+        cell_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
+                                     'valign': 'vcenter', 'text_wrap': True})
         num_fmt    = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': '#,##0', 'valign': 'vcenter'})
+                                     'num_format': '#,##0', 'valign': 'vcenter', 'text_wrap': True})
         rate_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': '#,##0.0000', 'valign': 'vcenter'})
+                                     'num_format': '#,##0.0000', 'valign': 'vcenter', 'text_wrap': True})
         ot_fmt     = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#E2EFDA', 'num_format': '#,##0', 'valign': 'vcenter'})
+                                     'bg_color': '#E2EFDA', 'num_format': '#,##0', 'valign': 'vcenter',
+                                     'text_wrap': True})
         absent_fmt = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'bg_color': '#FCE4D6', 'align': 'center', 'valign': 'vcenter'})
+                                     'bg_color': '#FCE4D6', 'align': 'center', 'valign': 'vcenter',
+                                     'text_wrap': True})
         dayoff_fmt = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
                                      'bg_color': '#E2E2E2', 'align': 'center', 'valign': 'vcenter',
-                                     'italic': True})
+                                     'italic': True, 'text_wrap': True})
         tot_fmt    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
-                                     'bg_color': '#FFF2CC', 'border': 1, 'num_format': '#,##0', 'valign': 'vcenter'})
+                                     'bg_color': '#FFF2CC', 'border': 1, 'num_format': '#,##0',
+                                     'valign': 'vcenter', 'text_wrap': True})
         tot_lbl    = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 10,
-                                     'bg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter'})
+                                     'bg_color': '#FFF2CC', 'border': 1, 'valign': 'vcenter',
+                                     'text_wrap': True})
         title_fmt  = wb.add_format({'bold': True, 'font_name': 'Arial', 'font_size': 14,
                                      'font_color': '#1F3864', 'align': 'center', 'valign': 'vcenter'})
         date_fmt   = wb.add_format({'font_name': 'Arial', 'font_size': 10, 'border': 1,
-                                     'num_format': 'dd/mm/yyyy', 'valign': 'vcenter'})
+                                     'num_format': 'dd/mm/yyyy', 'valign': 'vcenter', 'text_wrap': True})
 
         COLS   = [
             'SL', 'ID No', 'Employee', 'Date', 'Department', 'Shift', 'Status',
@@ -377,6 +382,18 @@ class DailyPayrollExcelWizard(models.TransientModel):
         sheet_label = str(self.report_date)[:31]
 
         ws = wb.add_worksheet(sheet_label)
+
+        # ── Page setup — 15 columns is too wide for portrait, so print
+        #    landscape on A4, scaled to fit the page width (rows still
+        #    spill across as many pages tall as needed), with the title
+        #    repeated at the top of every printed page ─────────────────
+        ws.set_landscape()
+        ws.set_paper(9)  # A4
+        ws.set_margins(left=0, right=0, top=0, bottom=0)
+        ws.fit_to_pages(1, 0)
+        ws.center_horizontally()
+        ws.repeat_rows(0, 1)
+
         ws.merge_range(0, 0, 1, len(COLS) - 1, title_str, title_fmt)
         ws.set_row(0, 30)
         ws.set_row(1, 10)
@@ -403,7 +420,7 @@ class DailyPayrollExcelWizard(models.TransientModel):
             sl_no  = 1
 
             for r in recs:
-                ws.set_row(row, 24)
+                ws.set_row(row, 30)
                 badge_no = r.employee_id.zk_badge_no or ''
 
                 if r.is_day_off:
@@ -758,6 +775,10 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
         # Per-department roll-up, used to build the
         # "Weekly Summary" sheet — how much money each department pays.
         dept_summary = {}
+        # Per-department employee rows, used to build the per-department
+        # sheets below (condensed columns, no daily grid/shift/day-off —
+        # matches the department-split reference export).
+        dept_rows = {}
 
         sl_no = 1
         for eid, e in all_emps:
@@ -832,25 +853,38 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
             grand_with_bonus += total_bonus
 
             # Roll employee totals up into the department-level summary
-            # (used only by the separate "Weekly Summary" sheet).
-            dept = e['dept']
-            if dept not in dept_summary:
-                dept_summary[dept] = {
-                    'employees': 0, 'present': 0, 'absent': 0, 'dayoff': 0,
-                    'base': 0.0, 'ot_h': 0.0, 'ot_p': 0.0, 'total': 0.0,
-                    'bonus': 0.0, 'with_bonus': 0.0,
-                }
-            ds = dept_summary[dept]
-            ds['employees']  += 1
-            ds['present']    += present_days
-            ds['absent']     += absent_days
-            ds['dayoff']     += dayoff_days
-            ds['base']       += total_base
-            ds['ot_h']       += total_ot_h
-            ds['ot_p']       += total_ot_p
-            ds['total']      += grand_t
-            ds['bonus']      += emp_bonus
-            ds['with_bonus'] += total_bonus
+            # and per-department sheet — but only for an employee whose
+            # net pay for the week isn't 0 (e.g. absent every day); a
+            # zero-pay employee is left off both the department tab and
+            # the Weekly Summary sheet's numbers entirely. The main
+            # combined sheet above still lists every employee.
+            emp_payable = total_bonus if self.include_bonus else grand_t
+            if emp_payable:
+                dept = e['dept']
+                if dept not in dept_summary:
+                    dept_summary[dept] = {
+                        'employees': 0, 'present': 0, 'absent': 0, 'dayoff': 0,
+                        'base': 0.0, 'ot_h': 0.0, 'ot_p': 0.0, 'total': 0.0,
+                        'bonus': 0.0, 'with_bonus': 0.0,
+                    }
+                ds = dept_summary[dept]
+                ds['employees']  += 1
+                ds['present']    += present_days
+                ds['absent']     += absent_days
+                ds['dayoff']     += dayoff_days
+                ds['base']       += total_base
+                ds['ot_h']       += total_ot_h
+                ds['ot_p']       += total_ot_p
+                ds['total']      += grand_t
+                ds['bonus']      += emp_bonus
+                ds['with_bonus'] += total_bonus
+
+                dept_rows.setdefault(dept, []).append({
+                    'badge': e['badge'], 'name': e['name'], 'wage': e['wage'],
+                    'present': present_days, 'absent': absent_days,
+                    'base': total_base, 'ot_h': total_ot_h, 'ot_p': total_ot_p,
+                    'last_week': last_week_amt, 'grand_total': grand_t,
+                })
 
             sl_no += 1
             row += 1
@@ -873,6 +907,122 @@ class WeeklyPayrollExcelWizard(models.TransientModel):
             ws.write(row, S + 11, '',               tot_lbl)
         else:
             ws.write(row, S + 8, '', tot_lbl)
+
+        # ── Per-department sheets — condensed columns (SL/ID No/Employee/
+        #    Department/Daily Wage/Present/Absent/Base Pay/OT Hours/OT Pay/
+        #    Last Week Adj/Grand Total/Remarks), one tab per department,
+        #    named after it. Colours/alignment/sizes match the department-
+        #    split reference workbook exactly: Calibri, no fill, centered,
+        #    thin border throughout, with ID No/Employee/Grand Total in a
+        #    larger bold font and Department in a smaller font to fit its
+        #    narrow column ────────────────────────────────────────────
+        dept_title_fmt = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 14,
+                                         'align': 'center', 'valign': 'vcenter'})
+        dept_hdr10 = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 10,
+                                     'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
+        dept_hdr11 = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 11,
+                                     'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
+        dept_hdr12 = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 12,
+                                     'border': 1, 'align': 'center', 'valign': 'vcenter', 'text_wrap': True})
+        dept_sl_fmt      = wb.add_format({'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+                                           'align': 'center', 'valign': 'vcenter'})
+        dept_badge_fmt   = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 12, 'border': 1,
+                                           'align': 'center', 'valign': 'vcenter'})
+        dept_name_fmt    = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 11, 'border': 1,
+                                           'align': 'center', 'valign': 'vcenter'})
+        dept_dept_fmt    = wb.add_format({'font_name': 'Calibri', 'font_size': 8, 'border': 1,
+                                           'align': 'center', 'valign': 'vcenter'})
+        dept_wage_fmt    = wb.add_format({'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+                                           'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
+        dept_cnt_fmt     = wb.add_format({'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+                                           'align': 'center', 'valign': 'vcenter'})
+        dept_num_fmt     = wb.add_format({'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+                                           'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
+        dept_grand_fmt   = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 12, 'border': 1,
+                                           'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
+        dept_remarks_fmt = wb.add_format({'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+                                           'align': 'center', 'valign': 'vcenter'})
+        dept_tot_lbl_fmt     = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+                                               'align': 'center', 'valign': 'vcenter'})
+        dept_tot_num_fmt     = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 9.5, 'border': 1,
+                                               'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
+        dept_tot_grand_fmt   = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 12, 'border': 1,
+                                               'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter'})
+        dept_tot_remarks_fmt = wb.add_format({'bold': True, 'font_name': 'Calibri', 'font_size': 9, 'border': 1,
+                                               'align': 'center', 'valign': 'vcenter'})
+
+        dept_cols   = ['SL', 'ID No', 'Employee', 'Department', 'Daily\nWage',
+                        'Present\nDays', 'Absent\nDays', 'Total\nBase Pay',
+                        'Total OT\nHours', 'Total OT\nPay', 'Last Week\nAdj.',
+                        'Grand\nTotal', 'Remarks']
+        dept_widths   = [5.33, 8.78, 11.78, 8.89, 5.55, 5.66, 5.55, 8.0, 4.66, 4.44, 4.89, 9.89, 17.55]
+        dept_hdr_fmts = [dept_hdr10, dept_hdr12, dept_hdr11, dept_hdr10, dept_hdr10,
+                         dept_hdr10, dept_hdr10, dept_hdr10, dept_hdr10, dept_hdr10,
+                         dept_hdr10, dept_hdr12, dept_hdr10]
+
+        used_sheet_names = {sheet_label, 'Weekly Summary'}
+        invalid_chars = str.maketrans('[]:*?/\\', '       ')
+        for dept in sorted(dept_rows.keys()):
+            emp_rows = dept_rows[dept]
+
+            sheet_name = (dept or 'No Department').translate(invalid_chars).strip()[:31] or 'No Department'
+            base_name, suffix = sheet_name, 1
+            while sheet_name in used_sheet_names:
+                suffix += 1
+                sheet_name = f"{base_name[:28]} {suffix}"
+            used_sheet_names.add(sheet_name)
+
+            dws = wb.add_worksheet(sheet_name)
+            for i, w in enumerate(dept_widths):
+                dws.set_column(i, i, w)
+
+            dws.merge_range(0, 0, 1, len(dept_cols) - 1, title_str, dept_title_fmt)
+            dws.set_row(0, 24)
+            dws.set_row(1, 9.6)
+
+            for c, h in enumerate(dept_cols):
+                dws.merge_range(2, c, 3, c, h, dept_hdr_fmts[c])
+            dws.set_row(2, 28.05)
+            dws.set_row(3, 13.8)
+            d_row = 4
+
+            d_present = d_absent = 0
+            d_base = d_ot_h = d_ot_p = d_last_week = d_total = 0.0
+            for i, r in enumerate(emp_rows, start=1):
+                dws.set_row(d_row, 31.95)
+                dws.write(d_row, 0, i,                dept_sl_fmt)
+                dws.write(d_row, 1, r['badge'],        dept_badge_fmt)
+                dws.write(d_row, 2, r['name'],         dept_name_fmt)
+                dws.write(d_row, 3, dept,              dept_dept_fmt)
+                dws.write(d_row, 4, r['wage'],         dept_wage_fmt)
+                dws.write(d_row, 5, r['present'],      dept_cnt_fmt)
+                dws.write(d_row, 6, r['absent'],       dept_cnt_fmt)
+                dws.write(d_row, 7, r['base'],         dept_num_fmt)
+                dws.write(d_row, 8, r['ot_h'],         dept_num_fmt)
+                dws.write(d_row, 9, r['ot_p'],         dept_num_fmt)
+                dws.write(d_row, 10, r['last_week'],   dept_num_fmt)
+                dws.write(d_row, 11, r['grand_total'], dept_grand_fmt)
+                dws.write(d_row, 12, '',               dept_remarks_fmt)
+
+                d_present   += r['present']
+                d_absent    += r['absent']
+                d_base      += r['base']
+                d_ot_h      += r['ot_h']
+                d_ot_p      += r['ot_p']
+                d_last_week += r['last_week']
+                d_total     += r['grand_total']
+                d_row += 1
+
+            dws.set_row(d_row, 31.95)
+            dws.merge_range(d_row, 0, d_row, 4, 'GRAND TOTAL', dept_tot_lbl_fmt)
+            dws.write(d_row, 5, d_present,    dept_tot_num_fmt)
+            dws.write(d_row, 6, d_absent,     dept_tot_num_fmt)
+            dws.write(d_row, 7, d_base,       dept_tot_num_fmt)
+            dws.write(d_row, 8, d_ot_h,       dept_tot_num_fmt)
+            dws.write(d_row, 9, d_ot_p,       dept_tot_num_fmt)
+            dws.write(d_row, 10, d_last_week, dept_tot_num_fmt)
+            dws.write(d_row, 11, d_total,     dept_tot_grand_fmt)
+            dws.write(d_row, 12, '',          dept_tot_remarks_fmt)
 
         # ── Weekly Summary sheet — how much money each department needs
         #    to disburse for the week ────────────────────────────────

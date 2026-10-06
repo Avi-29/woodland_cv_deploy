@@ -8,3 +8,4 @@ from . import hr_employee_dayoff_change_wizard
 from  . import hr_employee
 from . import payroll_bonus_deduction_report
 from . import payroll_daily_worker_summary
+from . import employee_approval_wage

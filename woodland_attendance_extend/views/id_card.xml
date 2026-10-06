@@ -301,7 +301,12 @@
             <t t-set="company" t-value="env.company"/>
             <div class="article">
                 <t t-foreach="docs" t-as="o">
-                <div class="page approval-sheet" style="font-family:Arial, sans-serif; line-height:1.5; color:#000; font-size:18px; padding:16px 8px;">
+                <!-- One sheet per A4 page when several are printed together:
+                     force a break after every sheet but the last (a trailing
+                     break would add a blank final page), and keep each sheet
+                     from being split across two pages. -->
+                <div class="page approval-sheet"
+                     t-attf-style="font-family:Arial, sans-serif; line-height:1.5; color:#000; font-size:18px; padding:16px 8px; page-break-inside:avoid; #{'' if o_last else 'page-break-after:always;'}">
 
                     <style>
                         /* Every cell gets a real border (table already has
@@ -312,8 +317,7 @@
                            tricks needed to keep a border-bottom "landing"
                            at the same spot on every row. */
                         .approval-sheet .value { font-size: 17px; }
-                        .approval-sheet .num, .approval-sheet .colon { white-space: nowrap; font-size: 17px; }
-                        .approval-sheet .colon { text-align: center; }
+                        .approval-sheet .num { white-space: nowrap; font-size: 17px; }
                         .approval-sheet .label { white-space: normal; line-height: 1.2; font-size: 17px; }
                         .approval-sheet td { vertical-align: middle; padding: 8px 10px; border: 1px solid #000; }
                     </style>
@@ -327,8 +331,18 @@
 
                     <h4 style="text-align:center; font-weight:bold; margin:16px 0;">Employment Approval Note Sheet</h4>
 
-                    <div style="text-align:right; margin-bottom:16px;">
-                        Date: <span style="display:inline-block; width:150px; text-align:left; padding-left:6px;" t-esc="print_date"/>
+                    <!-- ID No (left) and Date (right) on one line directly
+                         above the table, in normal flow — the old absolutely
+                         positioned ID box drifted when several sheets were
+                         printed in one PDF. Floats, not flexbox (unsupported
+                         by this system's wkhtmltopdf). -->
+                    <div style="overflow:hidden; margin-bottom:10px;">
+                        <div style="float:left; border:1px solid #000; padding:4px 10px; font-weight:bold;">
+                            ID No: <span t-field="o.badge_id"/>
+                        </div>
+                        <div style="float:right; padding-top:5px;">
+                            Date: <span style="display:inline-block; width:150px; text-align:left; padding-left:6px;" t-esc="print_date"/>
+                        </div>
                     </div>
 
                     <!-- Odoo's Bootstrap CSS is not loaded here (this report only
@@ -339,44 +353,39 @@
                          uses plain inline styles instead. -->
                     <table style="width:100%; table-layout:fixed; border-collapse:collapse;">
                         <colgroup>
-                            <!-- Left Label trimmed to 22% (border sits right after
-                                 the label instead of leaving a big empty gap) and
-                                 that width handed to Left Value (14% -> 21%, now
-                                 close to Right Value's 22%). Labels wrap (see
-                                 .approval-sheet .label below) so nothing clips
-                                 against the tighter column. -->
+                            <!-- No colon column: label runs straight into the
+                                 value cell, separated only by the border
+                                 between them. The 2% freed from each side's
+                                 colon column is handed to that side's label. -->
+                            <!-- Both halves use the same 5/20/25 split so the
+                                 left and right value columns are equal width. -->
                             <col style="width: 5%;"/> <!-- Left Number -->
-                            <col style="width: 22%;"/> <!-- Left Label -->
-                            <col style="width: 2%;"/> <!-- Left Colon -->
-                            <col style="width: 21%;"/> <!-- Left Value -->
+                            <col style="width: 20%;"/> <!-- Left Label -->
+                            <col style="width: 25%;"/> <!-- Left Value -->
 
                             <col style="width: 5%;"/> <!-- Right Number -->
-                            <col style="width: 21%;"/> <!-- Right Label -->
-                            <col style="width: 2%;"/> <!-- Right Colon -->
-                            <col style="width: 22%;"/> <!-- Right Value -->
+                            <col style="width: 20%;"/> <!-- Right Label -->
+                            <col style="width: 25%;"/> <!-- Right Value -->
                         </colgroup>
 
                         <tr>
                             <td class="num">1.</td>
                             <td class="label">Applicant Name</td>
-                            <td class="colon">:</td>
-                            <td class="value" colspan="5">
+                            <td class="value" colspan="4">
                                 <span t-field="o.name"/>
                             </td>
                         </tr>
                         <tr>
                             <td class="num">2.</td>
                             <td class="label">Father's Name</td>
-                            <td class="colon">:</td>
-                            <td class="value" colspan="5">
+                            <td class="value" colspan="4">
                                 <span t-field="o.father_name"/>
                             </td>
                         </tr>
                         <tr>
                             <td class="num">3.</td>
                             <td class="label">Mother's Name</td>
-                            <td class="colon">:</td>
-                            <td class="value" colspan="5">
+                            <td class="value" colspan="4">
                                 <span t-field="o.mother_name"/>
                             </td>
                         </tr>
@@ -384,13 +393,11 @@
                         <tr>
                             <td class="num">4.</td>
                             <td class="label">Permanent Add, Vill</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.permanent_address"/>
                             </td>
                             <td class="num">14.</td>
                             <td class="label">Present Add, Vill</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.present_address"/>
                             </td>
@@ -399,13 +406,11 @@
                         <tr>
                             <td class="num">5.</td>
                             <td class="label">Post Office</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.permanent_post_office"/>
                             </td>
                             <td class="num">15.</td>
                             <td class="label">Post Office</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.present_post_office"/>
                             </td>
@@ -414,13 +419,11 @@
                         <tr>
                             <td class="num">6.</td>
                             <td class="label">Thana</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.permanent_thana"/>
                             </td>
                             <td class="num">16.</td>
                             <td class="label">Thana</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.present_thana"/>
                             </td>
@@ -429,13 +432,11 @@
                         <tr>
                             <td class="num">7.</td>
                             <td class="label">District</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.permanent_district"/>
                             </td>
                             <td class="num">17.</td>
                             <td class="label">District</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.present_district"/>
                             </td>
@@ -444,13 +445,11 @@
                         <tr>
                             <td class="num">8.</td>
                             <td class="label">Date Of Birth</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.date_of_birth"/>
                             </td>
                             <td class="num">18.</td>
                             <td class="label">Present Age</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.present_age"/>
                             </td>
@@ -458,14 +457,12 @@
 
                         <tr>
                             <td class="num">9.</td>
-                            <td class="label">Educational<br/>Qualification</td>
-                            <td class="colon">:</td>
+                            <td class="label">Educational Qualification</td>
                             <td class="value">
                                 <span t-field="o.educational_qualification"/>
                             </td>
                             <td class="num">19.</td>
                             <td class="label">Mobile No</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.mobile_no"/>
                             </td>
@@ -473,16 +470,12 @@
 
                         <tr>
                             <td class="num">10.</td>
-                            <td class="label">
-                                Section where<br/>recruitment is required
-                            </td>
-                            <td class="colon">:</td>
+                            <td class="label">Section</td>
                             <td class="value">
                                 <span t-esc="o.department_id.name.capitalize() if o.department_id else ''"/>
                             </td>
                             <td class="num">20.</td>
                             <td class="label">Introducer</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.introducer"/>
                             </td>
@@ -491,13 +484,11 @@
                         <tr>
                             <td class="num">11.</td>
                             <td class="label">Applied Position</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.applied_job_id"/>
                             </td>
                             <td class="num">21.</td>
                             <td class="label">Approved Position</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.approved_job_id"/>
                             </td>
@@ -506,28 +497,24 @@
                         <tr>
                             <td class="num">12.</td>
                             <td class="label">Applied Salary</td>
-                            <td class="colon">:</td>
                             <td class="value">
-                                <span t-field="o.applied_salary"/>
+                                <span t-esc="'{:,.0f}/='.format(o.applied_salary or 0)"/>
                             </td>
                             <td class="num">22.</td>
                             <td class="label">Approved Salary</td>
-                            <td class="colon">:</td>
                             <td class="value">
-                                <span t-field="o.approved_salary"/>
+                                <span t-esc="'{:,.0f}/='.format(o.approved_salary or 0)"/>
                             </td>
                         </tr>
 
                         <tr>
                             <td class="num">13.</td>
                             <td class="label">Examination Result</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.examination_result"/>
                             </td>
                             <td class="num">23.</td>
                             <td class="label">Joining Date</td>
-                            <td class="colon">:</td>
                             <td class="value">
                                 <span t-field="o.joining_date"/>
                             </td>

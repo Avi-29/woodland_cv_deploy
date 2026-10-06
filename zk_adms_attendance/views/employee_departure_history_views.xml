@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_employee_departure_history_list" model="ir.ui.view">
+        <field name="name">employee.departure.history.list</field>
+        <field name="model">employee.departure.history</field>
+        <field name="arch" type="xml">
+            <list string="Departure / Reactivation History" default_order="event_date desc, id desc">
+                <field name="event_date"/>
+                <field name="employee_id"/>
+                <field name="action" widget="badge"
+                       decoration-danger="action == 'departed'"
+                       decoration-success="action == 'reactivated'"/>
+                <field name="badge_no"/>
+                <field name="departure_reason_id"/>
+                <field name="performed_by"/>
+                <field name="commands_queued" string="Commands Queued" optional="hide"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_employee_departure_history_form" model="ir.ui.view">
+        <field name="name">employee.departure.history.form</field>
+        <field name="model">employee.departure.history</field>
+        <field name="arch" type="xml">
+            <form string="Departure / Reactivation Event">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="action"/>
+                            <field name="event_date"/>
+                            <field name="departure_reason_id" invisible="action != 'departed'"/>
+                        </group>
+                        <group>
+                            <field name="badge_no"/>
+                            <field name="performed_by"/>
+                            <field name="commands_queued"/>
+                            <field name="enrolled_user_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Why this record needed a correction..." nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_employee_departure_history_search" model="ir.ui.view">
+        <field name="name">employee.departure.history.search</field>
+        <field name="model">employee.departure.history</field>
+        <field name="arch" type="xml">
+            <search string="Search Departure History">
+                <field name="employee_id"/>
+                <field name="badge_no"/>
+                <field name="performed_by"/>
+                <filter name="filter_departed" string="Departed" domain="[('action','=','departed')]"/>
+                <filter name="filter_reactivated" string="Reactivated" domain="[('action','=','reactivated')]"/>
+                <separator/>
+                <filter name="filter_this_month" string="This Month"
+                        domain="[('event_date','&gt;=', context_today().strftime('%Y-%m-01'))]"/>
+                <group >
+                    <filter name="group_employee" string="Employee" context="{'group_by':'employee_id'}"/>
+                    <filter name="group_action" string="Action" context="{'group_by':'action'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by':'event_date:month'}"/>
+                    <filter name="group_performed_by" string="Performed By" context="{'group_by':'performed_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_employee_departure_history" model="ir.actions.act_window">
+        <field name="name">Departure History</field>
+        <field name="res_model">employee.departure.history</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_employee_departure_history_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No departure or reactivation events recorded yet.
+            </p>
+            <p>
+                Employees are logged here automatically when they're archived
+                (removed from devices) or reactivated (resynced to devices).
+                HR Managers can correct or delete a mis-logged entry here.
+            </p>
+        </field>
+    </record>
+
+</odoo>

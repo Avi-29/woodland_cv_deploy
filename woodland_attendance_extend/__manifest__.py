@@ -31,6 +31,7 @@ Long description of module's purpose
         'views/id_card.xml',
         'wizard/id_card_batch.xml',
         'wizard/approval_sheet_wizard.xml',
+        'wizard/approval_excel_wizard.xml',
         'views/res_config_settings_views.xml',
         'views/employee_approval_views.xml',
         'views/ir_attachment_documents_views.xml',

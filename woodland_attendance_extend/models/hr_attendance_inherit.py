@@ -251,6 +251,8 @@ class HrAttendance(models.Model):
         }
 
     def action_remove_late_attendance(self):
+        if not self.env.user.has_group('woodland_attendance_extend.group_hr_super_admin'):
+            raise ValidationError(_('Only HR Super Admin can remove the Late flag.'))
         count = 0
         for rec in self:
             if rec.is_late:
@@ -265,6 +267,9 @@ class HrAttendance(models.Model):
                 'message': _(f'{count} record(s) Late flag cleared.'),
                 'type': 'success',
                 'sticky': False,
+                # Refresh the list/form so the cleared flag (and the form's
+                # now-hidden Remove Late button) shows immediately.
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
             }
         }
 

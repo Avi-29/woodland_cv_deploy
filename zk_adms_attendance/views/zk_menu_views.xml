@@ -48,6 +48,14 @@
               sequence="45"
               />
 
+    <menuitem id="menu_zk_departure_history"
+              name="Departure History"
+              parent="hr.menu_human_resources_configuration"
+              action="action_employee_departure_history"
+              groups="hr.group_hr_manager"
+              sequence="60"
+              />
+
     <menuitem id="menu_zk_config"
               name="Configuration"
               parent="menu_zk_root"

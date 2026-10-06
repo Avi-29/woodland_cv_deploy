@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<record id="view_hr_approval_excel_wizard_form" model="ir.ui.view">
+    <field name="name">hr.approval.excel.wizard.form</field>
+    <field name="model">hr.approval.excel.wizard</field>
+    <field name="arch" type="xml">
+        <form string="Export Approval Sheets">
+            <group>
+                <field name="export_month" options="{'min_precision':'months'}"/>
+            </group>
+            <footer>
+                <button name="action_export" type="object"
+                        string="Export Excel" class="btn-primary"/>
+                <button string="Cancel" class="btn-secondary" special="cancel"/>
+            </footer>
+        </form>
+    </field>
+</record>
+
+<record id="action_hr_approval_excel_wizard" model="ir.actions.act_window">
+    <field name="name">Export Approval Sheets</field>
+    <field name="res_model">hr.approval.excel.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+</record>
+
+</odoo>

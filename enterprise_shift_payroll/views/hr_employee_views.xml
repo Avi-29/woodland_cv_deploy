@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='employee_type']" position="after">
                 <field name="salary_type"/>
-                <field name="daily_wage"/>
+                <field name="daily_wage" invisible="salary_type != 'daily'"/>
             </xpath>
 
             <!-- Field + button inserted together in one xpath: day_off_day
@@ -29,9 +29,18 @@
             <!-- Wage is edited only through the Set/Change Wage wizards
                  below, so every change is dated and kept in
                  hr.employee.wage.history instead of silently overwriting
-                 whatever wage was in effect for past payroll months. -->
+                 whatever wage was in effect for past payroll months.
+                 It only applies to monthly-salary employees; daily
+                 workers use daily_wage above instead. -->
             <xpath expr="//field[@name='wage']" position="attributes">
                 <attribute name="readonly">1</attribute>
+                <attribute name="invisible">salary_type != 'monthly'</attribute>
+            </xpath>
+            <xpath expr="//label[@for='wage']" position="attributes">
+                <attribute name="invisible">salary_type != 'monthly'</attribute>
+            </xpath>
+            <xpath expr="//div[@name='wage']" position="attributes">
+                <attribute name="invisible">salary_type != 'monthly'</attribute>
             </xpath>
             <xpath expr="//div[@name='wage']" position="inside">
                 <button name="action_set_wage" type="object"
@@ -39,7 +48,8 @@
                         invisible="wage != 0"/>
                 <button name="action_change_wage" type="object"
                         string="Change Wage" class="btn-link ms-2"
-                        invisible="wage == 0"/>
+                        invisible="wage == 0"
+                        groups="woodland_attendance_extend.group_hr_super_admin"/>
             </xpath>
             <xpath expr="//page[@name='payroll_information']" position="after">
                 <page name="wage_history" string="Wage History"
