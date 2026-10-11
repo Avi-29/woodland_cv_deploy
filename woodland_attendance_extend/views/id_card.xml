@@ -446,7 +446,7 @@
                             <td class="num">8.</td>
                             <td class="label">Date Of Birth</td>
                             <td class="value">
-                                <span t-field="o.date_of_birth"/>
+                                <span t-field="o.date_of_birth" t-options='{"widget": "date", "format": "dd-MM-yyyy"}'/>
                             </td>
                             <td class="num">18.</td>
                             <td class="label">Present Age</td>
@@ -516,7 +516,7 @@
                             <td class="num">23.</td>
                             <td class="label">Joining Date</td>
                             <td class="value">
-                                <span t-field="o.joining_date"/>
+                                <span t-field="o.joining_date" t-options='{"widget": "date", "format": "dd-MM-yyyy"}'/>
                             </td>
                         </tr>
                     </table>

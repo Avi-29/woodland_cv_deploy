@@ -1488,6 +1488,23 @@ class ImportPayslipsWizard(models.TransientModel):
             'font_name': 'Calibri', 'font_size': 10, 'border': 1,
             'num_format': '#,##0', 'valign': 'vcenter'
         })
+        # Highlighted copies of the three row formats above — marks new
+        # joiners / reactivated employees on the Low Attendance sheet.
+        HIGHLIGHT_BG = '#FFE699'
+        hl_cell_fmt = wb.add_format({
+            'align': 'center', 'bg_color': HIGHLIGHT_BG,
+            'font_name': 'Calibri', 'font_size': 10, 'border': 1, 'valign': 'vcenter'
+        })
+        hl_cell_rot_fmt = wb.add_format({
+            'align': 'center', 'bg_color': HIGHLIGHT_BG,
+            'font_name': 'Calibri', 'font_size': 10, 'border': 1, 'valign': 'vcenter',
+            'text_wrap': True, 'rotation': 90,
+        })
+        hl_num_fmt = wb.add_format({
+            'align': 'center', 'bg_color': HIGHLIGHT_BG,
+            'font_name': 'Calibri', 'font_size': 10, 'border': 1,
+            'num_format': '#,##0', 'valign': 'vcenter'
+        })
         tot_fmt = wb.add_format({
             'bold': True, 'font_name': 'Calibri', 'font_size': 10,
             'border': 1, 'num_format': '#,##0', 'valign': 'vcenter'
@@ -1611,7 +1628,11 @@ class ImportPayslipsWizard(models.TransientModel):
                 'prsnt_net': prsnt_net,
             }
 
-        def _write_slip_row(target_ws, r, sl_no, slip, calc, last_month_days):
+        def _write_slip_row(target_ws, r, sl_no, slip, calc, last_month_days, highlight=False):
+            c_fmt, r_fmt, n_fmt = (
+                (hl_cell_fmt, hl_cell_rot_fmt, hl_num_fmt) if highlight
+                else (cell_fmt, cell_rot_fmt, num_fmt)
+            )
             emp = slip.employee_id
             joining = emp.contract_date_start or emp.joining_date
             rotated_vals = {
@@ -1625,34 +1646,36 @@ class ImportPayslipsWizard(models.TransientModel):
             # 120pt into the column width instead of growing further).
             longest = max((len(v) for v in rotated_vals.values()), default=0)
             target_ws.set_row(r, min(max(22, longest * 5.5 + 8), 120))
-            target_ws.write(r, IDX['SER NO'], sl_no,                       cell_fmt)
-            target_ws.write(r, IDX['ID NO'], emp.zk_badge_no or '',        cell_fmt)
-            target_ws.write(r, IDX['NAME'], emp.name or '',                 cell_fmt)
+            target_ws.write(r, IDX['SER NO'], sl_no,                       c_fmt)
+            target_ws.write(r, IDX['ID NO'], emp.zk_badge_no or '',        c_fmt)
+            target_ws.write(r, IDX['NAME'], emp.name or '',                 c_fmt)
             for label, val in rotated_vals.items():
-                target_ws.write(r, IDX[label], val,                        cell_rot_fmt)
-            target_ws.write(r, IDX['TOTAL WORKING DAYS'], calc['total_wd'], cell_fmt)
-            target_ws.write(r, IDX['ABSENT'], calc['absent_col'],          cell_fmt)
-            target_ws.write(r, IDX['LEAVE APPROVED'], calc['leave_approve'], cell_fmt)
-            target_ws.write(r, IDX['LAST MONTH'], last_month_days,         cell_fmt)
-            target_ws.write(r, IDX['PAY DAYS'], calc['pay_days'],          cell_fmt)
-            target_ws.write(r, IDX['BASIC SALARY'], slip.basic_amount,     num_fmt)
-            target_ws.write(r, IDX['HOUSE RENT'], slip.hra_amount,        num_fmt)
-            target_ws.write(r, IDX['CONVENCE'], slip.travel_amount,       num_fmt)
-            target_ws.write(r, IDX['MEDICAL'], slip.medical_amount,       num_fmt)
-            target_ws.write(r, IDX['OTHERS'], 0,                          num_fmt)
-            target_ws.write(r, IDX['Prsnt Gross Salary'], slip.gross_salary, num_fmt)
-            target_ws.write(r, IDX['Attendes incentive'], slip.attendance_bonus, num_fmt)
-            target_ws.write(r, IDX['Prsnt Net Salary'], calc['prsnt_net'], num_fmt)
-            target_ws.write(r, IDX['TAX'], 0,                             num_fmt)
-            target_ws.write(r, IDX['LATE DEDUCT'], slip.late_deduction,   num_fmt)
-            target_ws.write(r, IDX['AD'], calc['advance'],                num_fmt)
-            target_ws.write(r, IDX['H&S PRODUCT SALE ADVANCE'], calc['penalty'], num_fmt)
-            target_ws.write(r, IDX['Total Deduct'], calc['total_deduct'], num_fmt)
-            target_ws.write(r, IDX['Net Pay'], slip.net_salary,           num_fmt)
-            # Bank-transfer employees don't need a wet-ink signature — show
+                target_ws.write(r, IDX[label], val,                        r_fmt)
+            target_ws.write(r, IDX['TOTAL WORKING DAYS'], calc['total_wd'], c_fmt)
+            target_ws.write(r, IDX['ABSENT'], calc['absent_col'],          c_fmt)
+            target_ws.write(r, IDX['LEAVE APPROVED'], calc['leave_approve'], c_fmt)
+            target_ws.write(r, IDX['LAST MONTH'], last_month_days,         c_fmt)
+            target_ws.write(r, IDX['PAY DAYS'], calc['pay_days'],          c_fmt)
+            target_ws.write(r, IDX['BASIC SALARY'], slip.basic_amount,     n_fmt)
+            target_ws.write(r, IDX['HOUSE RENT'], slip.hra_amount,        n_fmt)
+            target_ws.write(r, IDX['CONVENCE'], slip.travel_amount,       n_fmt)
+            target_ws.write(r, IDX['MEDICAL'], slip.medical_amount,       n_fmt)
+            target_ws.write(r, IDX['OTHERS'], 0,                          n_fmt)
+            target_ws.write(r, IDX['Prsnt Gross Salary'], slip.gross_salary, n_fmt)
+            target_ws.write(r, IDX['Attendes incentive'], slip.attendance_bonus, n_fmt)
+            target_ws.write(r, IDX['Prsnt Net Salary'], calc['prsnt_net'], n_fmt)
+            target_ws.write(r, IDX['TAX'], 0,                             n_fmt)
+            target_ws.write(r, IDX['LATE DEDUCT'], slip.late_deduction,   n_fmt)
+            target_ws.write(r, IDX['AD'], calc['advance'],                n_fmt)
+            target_ws.write(r, IDX['H&S PRODUCT SALE ADVANCE'], calc['penalty'], n_fmt)
+            target_ws.write(r, IDX['Total Deduct'], calc['total_deduct'], n_fmt)
+            target_ws.write(r, IDX['Net Pay'], slip.net_salary,           n_fmt)
+            # Payslip notes take priority in the SIG cell. Otherwise
+            # bank-transfer employees don't need a wet-ink signature — show
             # their account number for reference instead; cash-paid
             # employees (no bank_acc_no) get a blank cell to sign in.
-            target_ws.write(r, IDX['SIG'], emp.bank_acc_no or '',         cell_fmt)
+            target_ws.write(r, IDX['SIG'],
+                            (slip.notes or '').strip() or emp.bank_acc_no or '', c_fmt)
 
         row = 2
         # grand_totals / dept_summary only cover rows that land on this
@@ -1682,6 +1705,43 @@ class ImportPayslipsWizard(models.TransientModel):
         # net 0 purely from an advance/penalty deduction, which would be a
         # contradictory reason to call them "low attendance".
         MIN_PAY_DAYS_FOR_MAIN_SHEET = 6
+
+        # Joining cycle: 26th of the previous month through the 25th of
+        # this month — the company's joining cutoff, not the calendar
+        # month. Used for the Low Attendance exemption and New Joiners.
+        def _joining_cycle(m_start):
+            prev_last = m_start - timedelta(days=1)
+            return prev_last.replace(day=26), m_start.replace(day=25)
+
+        def _reactivated_ids(c_from, c_to):
+            return set(
+                self.env['employee.departure.history'].search([
+                    ('action', '=', 'reactivated'),
+                    ('event_date', '>=', c_from),
+                    ('event_date', '<=', c_to),
+                ]).mapped('employee_id.id')
+            )
+
+        def _is_new_or_reactivated(emp, c_from, c_to, react_ids):
+            joined = emp.contract_date_start
+            return (emp.id in react_ids
+                    or bool(joined and c_from <= joined <= c_to))
+
+        # Under MIN_PAY_DAYS_FOR_MAIN_SHEET pay days normally means Low
+        # Attendance. New joiners / reactivated employees are expected to
+        # have few days in their first cycle, so they stay on the main
+        # sheet — unless their net pay is 0, then nothing is payable and
+        # they go to Low Attendance like everyone else.
+        def _is_low_attendance(slip, pay_days, c_from, c_to, react_ids):
+            if pay_days >= MIN_PAY_DAYS_FOR_MAIN_SHEET:
+                return False
+            if _is_new_or_reactivated(slip.employee_id, c_from, c_to, react_ids):
+                return slip.net_salary <= 0
+            return True
+
+        new_joiner_from, new_joiner_to = _joining_cycle(month_start)
+        reactivated_emp_ids = _reactivated_ids(new_joiner_from, new_joiner_to)
+
         low_attendance_rows = []
         # Every slip processed this run, regardless of which sheet its row
         # ends up on — used below to find new joiners without re-deriving
@@ -1701,7 +1761,8 @@ class ImportPayslipsWizard(models.TransientModel):
             # from this sheet's own rows, but from Department Summary /
             # grand totals as well, so nothing reconciles against money
             # tied to someone who isn't in the main list.
-            if pay_days < MIN_PAY_DAYS_FOR_MAIN_SHEET:
+            if _is_low_attendance(slip, pay_days, new_joiner_from,
+                                  new_joiner_to, reactivated_emp_ids):
                 low_attendance_rows.append((slip, calc, last_month_days))
                 continue
 
@@ -1807,7 +1868,9 @@ class ImportPayslipsWizard(models.TransientModel):
         ws.write(row, IDX['Net Pay'], 'APPROVED BY', sig_fmt)
 
         # ── Low Attendance sheet — employees with under 6 pay days this
-        #    period, kept out of the main list ───────────────────────────
+        #    period, kept out of the main list. New joiners / reactivated
+        #    employees only land here with 0 net pay, and are highlighted.
+        #    ─────────────────────────────────────────────────────────────
         zw = wb.add_worksheet('Low Attendance')
         for i, w in enumerate(WIDTHS):
             zw.set_column(i, i, w)
@@ -1836,7 +1899,10 @@ class ImportPayslipsWizard(models.TransientModel):
             'prsnt_net': 0.0, 'total_deduct': 0.0,
         }
         for zsl_no, (slip, calc, last_month_days) in enumerate(low_attendance_rows, start=1):
-            _write_slip_row(zw, zrow, zsl_no, slip, calc, last_month_days)
+            _write_slip_row(zw, zrow, zsl_no, slip, calc, last_month_days,
+                            highlight=_is_new_or_reactivated(
+                                slip.employee_id, new_joiner_from,
+                                new_joiner_to, reactivated_emp_ids))
             zrow += 1
 
             low_totals['basic']      += slip.basic_amount
@@ -1886,15 +1952,16 @@ class ImportPayslipsWizard(models.TransientModel):
         zw.write(zrow, IDX['Total Deduct'], low_totals['total_deduct'],       tot_fmt)
         zw.write(zrow, IDX['Net Pay'], low_totals['net'],                     tot_fmt)
         zw.write(zrow, IDX['SIG'], '',                                       tot_lbl)
+        zrow += 2
+        zw.write(zrow, IDX['SER NO'], '', hl_cell_fmt)
+        zw.write(zrow, IDX['ID NO'],
+                 f"New joiner / reactivated ({new_joiner_from.strftime('%d %b')} – "
+                 f"{new_joiner_to.strftime('%d %b')}) with under "
+                 f"{MIN_PAY_DAYS_FOR_MAIN_SHEET} pay days and 0 net pay")
 
         # ── New Joiners sheet — employees whose contract started within
-        #    this payroll cycle (26th of the previous month through the
-        #    25th of this month — the company's joining cutoff, not the
-        #    calendar month), purely informational: they stay on the main
-        #    sheet exactly as computed; nothing here changes that ────────
-        prev_month_last_day = month_start - timedelta(days=1)
-        new_joiner_from = prev_month_last_day.replace(day=26)
-        new_joiner_to = month_start.replace(day=25)
+        #    this joining cycle, purely informational: they stay on the
+        #    main sheet exactly as computed; nothing here changes that ────
 
         new_joiner_rows = [
             (slip, calc, last_month_days)
@@ -2075,17 +2142,30 @@ class ImportPayslipsWizard(models.TransientModel):
         ]).filtered(lambda s: s.monthly_wage)
         prev_days_map = self.env['payroll.adjustment'].get_last_month_days_map(prev_month_start)
 
+        prev_cycle_from, prev_cycle_to = _joining_cycle(prev_month_start)
+        prev_reactivated_ids = _reactivated_ids(prev_cycle_from, prev_cycle_to)
+
         prev_dept_summary = {}
+        # Previous month's main-list slips by employee — the DIFFERENCE
+        # block below reconciles against exactly this population.
+        prev_main_by_emp = {}
+        # Everyone with a payslip last month, main list or not — used to
+        # explain why a Re Active employee wasn't on last month's list.
+        prev_all_emp_ids = set()
         for slip in prev_payslips:
             emp = slip.employee_id
+            prev_all_emp_ids.add(emp.id)
             dept = emp.department_id.name or 'No Department'
             pay_days = _row_calc_for(slip, emp, prev_days_map.get(emp.id, 0.0))['pay_days']
             # Same low-attendance barrier as the current month's main list
-            # (MIN_PAY_DAYS_FOR_MAIN_SHEET) -- otherwise the previous-month
-            # column here would include people the current month's column
-            # deliberately excludes, making the two not actually comparable.
-            if pay_days < MIN_PAY_DAYS_FOR_MAIN_SHEET:
+            # (evaluated against last month's own joining cycle) -- otherwise
+            # the previous-month column here would include people the
+            # current month's column deliberately excludes, making the two
+            # not actually comparable.
+            if _is_low_attendance(slip, pay_days, prev_cycle_from,
+                                  prev_cycle_to, prev_reactivated_ids):
                 continue
+            prev_main_by_emp[emp.id] = slip
             d = prev_dept_summary.setdefault(dept, {
                 'employees': 0, 'pay_days': 0, 'gross': 0.0, 'bonus': 0.0, 'net': 0.0,
                 'penalty': 0.0, 'advance': 0.0, 'late_ded': 0.0,
@@ -2250,53 +2330,62 @@ class ImportPayslipsWizard(models.TransientModel):
         # ─────────────────────────────────────────────────────────────
         block_row0 = sy_row  # first of the 7 rows (0-based)
 
-        # Re Active: employees whose employee.departure.history (from
-        # zk_adms_attendance) shows a 'reactivated' event within this
-        # joining cycle window, matched against this month's payslips.
-        reactivated_emp_ids = set(
-            self.env['employee.departure.history'].search([
-                ('action', '=', 'reactivated'),
-                ('event_date', '>=', new_joiner_from),
-                ('event_date', '<=', new_joiner_to),
-            ]).mapped('employee_id.id')
-        )
-        reactive_rows = [
-            row for row in all_rows
-            if row[0].employee_id.id in reactivated_emp_ids
-        ]
-        reactive_gross_total = sum(slip.gross_salary for slip, _pd, _lmd in reactive_rows)
+        # Every row is built from the two main lists only (this month's
+        # and last month's, both excluding Low Attendance), so that
+        # first-4 minus last-3 equals cur_gross_total - prev_gross_total
+        # exactly:
+        #   added   = in this month's main list, not last month's
+        #             -> New Joining Member (new joiners) or Re Active
+        #                (everyone else: reactivated, back from Low
+        #                Attendance, or no payslip last month)
+        #   removed = in last month's main list, not this month's
+        #             -> Pending Manpower (now Low Attendance, or left)
+        #   both    -> Salary Increase / Decrease (gross difference)
+        low_slip_ids = {slip.id for slip, _c, _l in low_attendance_rows}
+        cur_main_by_emp = {
+            slip.employee_id.id: slip
+            for slip, _c, _l in all_rows if slip.id not in low_slip_ids
+        }
+        new_joiner_emp_ids = {slip.employee_id.id for slip, _c, _l in new_joiner_rows}
 
-        # Salary Increase / Decrease: compare this month's monthly_wage to
-        # last month's payslip for the same employee. New joiners (no
-        # payslip last month) have nothing to compare against and are
-        # skipped here.
-        prev_wage_by_emp = {s.employee_id.id: s.monthly_wage for s in prev_payslips}
+        nj_count = reactive_count = pending_count = 0
+        nj_amount = reactive_amount = pending_amount = 0.0
         salary_increase_count = salary_decrease_count = 0
         salary_increase_amount = salary_decrease_amount = 0.0
-        for slip, _pd, _lmd in all_rows:
-            prev_wage = prev_wage_by_emp.get(slip.employee_id.id)
-            if prev_wage is None:
+        # The employees behind the "Re Active" count, listed on their own
+        # sheet below.
+        reactive_slips = []
+        for emp_id, slip in cur_main_by_emp.items():
+            prev_slip = prev_main_by_emp.get(emp_id)
+            if prev_slip is None:
+                if emp_id in new_joiner_emp_ids:
+                    nj_count += 1
+                    nj_amount += slip.gross_salary
+                else:
+                    reactive_count += 1
+                    reactive_amount += slip.gross_salary
+                    reactive_slips.append(slip)
                 continue
-            wage_diff = slip.monthly_wage - prev_wage
-            if wage_diff > 0:
+            gross_diff = slip.gross_salary - prev_slip.gross_salary
+            if gross_diff > 0:
                 salary_increase_count += 1
-                salary_increase_amount += wage_diff
-            elif wage_diff < 0:
+                salary_increase_amount += gross_diff
+            elif gross_diff < 0:
                 salary_decrease_count += 1
-                salary_decrease_amount += -wage_diff
+                salary_decrease_amount += -gross_diff
+        for emp_id, prev_slip in prev_main_by_emp.items():
+            if emp_id not in cur_main_by_emp:
+                pending_count += 1
+                pending_amount += prev_slip.gross_salary
 
-        # Computed rows: New Joining Member (contract_date_start within
-        # this joining cycle — same list as the "New Joiners" sheet),
-        # Re Active and Salary Increase/Decrease (above), and Pending
-        # Manpower (the "Low Attendance" sheet's headcount/gross).
         # New Joining Officer / Pending Officer need a Member-vs-Officer
         # split that isn't defined yet — left blank for manual entry.
         difference_rows = [
-            ('New Joining Member', len(new_joiner_rows), nj_gross_total, False),
+            ('New Joining Member', nj_count, nj_amount, False),
             ('New Joining Officer', 0, 0.0, True),
-            ('Re Active', len(reactive_rows), reactive_gross_total, False),
+            ('Re Active', reactive_count, reactive_amount, False),
             ('Salary Increase', salary_increase_count, salary_increase_amount, False),
-            ('Pending Manpower', len(low_attendance_rows), low_totals['gross'], False),
+            ('Pending Manpower', pending_count, pending_amount, False),
             ('Salary Decrease', salary_decrease_count, salary_decrease_amount, False),
             ('Pending Officer', 0, 0.0, True),
         ]
@@ -2337,6 +2426,69 @@ class ImportPayslipsWizard(models.TransientModel):
             f"SUMMARY {prev_month_start.strftime('%B').upper()} - {prev_month_start.year}",
             prev_dept_summary,
         )
+
+        # ── Re Active sheet — the employees counted under "Re Active" in
+        #    the Summary sheet's DIFFERENCE block: on this month's main
+        #    list, not on last month's, and not a new joiner ─────────────
+        pay_days_by_slip = {slip.id: calc['pay_days'] for slip, calc, _l in all_rows}
+
+        ra = wb.add_worksheet('Re Active')
+        RA_COLS = ['SL', 'ID', 'Name', 'Job Title', 'Department', 'Reason',
+                   'Total Pay Days', 'Gross Salary', 'Net Salary', 'Bank Account']
+        RA_WIDTHS = [5, 12, 24, 18, 24, 26, 14, 16, 16, 22]
+        for i, w in enumerate(RA_WIDTHS):
+            ra.set_column(i, i, w)
+
+        ra.merge_range(
+            0, 0, 1, len(RA_COLS) - 1,
+            f"Re Active  |  {month_start.strftime('%B %Y')}",
+            title_fmt,
+        )
+        ra.set_row(0, 30)
+        ra.set_row(1, 10)
+
+        ra_row = 2
+        for c, h in enumerate(RA_COLS):
+            ra.write(ra_row, c, h, hdr_fmt)
+        ra.set_row(ra_row, 30)
+        ra_row += 1
+
+        ra_pay_days_total = 0
+        ra_gross_total = 0.0
+        ra_net_total = 0.0
+
+        for ra_sl, slip in enumerate(reactive_slips, start=1):
+            emp = slip.employee_id
+            pay_days = pay_days_by_slip[slip.id]
+            if emp.id in reactivated_emp_ids:
+                reason = 'Reactivated'
+            elif emp.id in prev_all_emp_ids:
+                reason = 'Low attendance last month'
+            else:
+                reason = 'No payslip last month'
+            ra.set_row(ra_row, 20)
+            ra.write(ra_row, 0, ra_sl,                  cell_fmt)
+            ra.write(ra_row, 1, emp.zk_badge_no or '',  cell_fmt)
+            ra.write(ra_row, 2, emp.name or '',          cell_fmt)
+            ra.write(ra_row, 3, emp.job_title or '',      cell_fmt)
+            ra.write(ra_row, 4, emp.department_id.name or '', cell_fmt)
+            ra.write(ra_row, 5, reason,                  cell_fmt)
+            ra.write(ra_row, 6, pay_days,                cell_fmt)
+            ra.write(ra_row, 7, slip.gross_salary,        num_fmt)
+            ra.write(ra_row, 8, slip.net_salary,          num_fmt)
+            ra.write(ra_row, 9, emp.bank_acc_no or '',    cell_fmt)
+            ra_row += 1
+
+            ra_pay_days_total += pay_days
+            ra_gross_total    += slip.gross_salary
+            ra_net_total      += slip.net_salary
+
+        ra.set_row(ra_row, 22)
+        ra.merge_range(ra_row, 0, ra_row, 5, f'TOTAL  ({len(reactive_slips)} re active)', tot_lbl)
+        ra.write(ra_row, 6, ra_pay_days_total, tot_fmt)
+        ra.write(ra_row, 7, ra_gross_total,    tot_fmt)
+        ra.write(ra_row, 8, ra_net_total,      tot_fmt)
+        ra.write(ra_row, 9, '',                 tot_lbl)
 
         wb.close()
         output.seek(0)
