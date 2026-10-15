@@ -10,6 +10,6 @@ access_hr_employee_dayoff_history_user,hr.employee.dayoff.history.user,model_hr_
 access_hr_employee_dayoff_history_manager,hr.employee.dayoff.history.manager,model_hr_employee_dayoff_history,hr.group_hr_manager,1,1,1,1
 access_hr_employee_approval_user,hr.employee.approval.user,model_hr_employee_approval,hr.group_hr_user,1,1,1,0
 access_hr_employee_approval_manager,hr.employee.approval.manager,model_hr_employee_approval,hr.group_hr_manager,1,1,1,1
-
-
-
+access_hr_section_employee,hr.section.employee,model_hr_section,base.group_user,1,0,0,0
+access_hr_section_user,hr.section.user,model_hr_section,hr.group_hr_user,1,1,1,0
+access_hr_section_manager,hr.section.manager,model_hr_section,hr.group_hr_manager,1,1,1,1

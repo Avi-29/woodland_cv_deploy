@@ -20,6 +20,9 @@ class HrEmployee(models.Model):
              "12-hour shifts. This resolves check-in window overlaps at boundaries "
              "between those two shifts."
     )
+    section_id = fields.Many2one(
+        'hr.section', string="Section", index=True, tracking=True,
+        domain="['|', ('department_id', '=', False), ('department_id', '=', department_id)]")
     is_ot_eligible =fields.Boolean(string="Eligible For OT", default=True)
     is_late_eligible = fields.Boolean(
         string="Eligible For Late Marking", default=True,

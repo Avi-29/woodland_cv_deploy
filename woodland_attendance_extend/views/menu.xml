@@ -5,6 +5,10 @@
               name="Shifts"
               parent="hr.menu_human_resources_configuration"
               action="action_shift"/>
+    <menuitem id="menu_hr_section"
+              name="Sections"
+              parent="hr.menu_human_resources_configuration"
+              action="action_hr_section"/>
     <menuitem id="menu_day_off_attendance"
               name="Day-Off Records"
               parent="hr_attendance.menu_hr_attendance_root"

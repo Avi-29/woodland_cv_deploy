@@ -120,6 +120,7 @@
                 </button>
             </xpath>
             <xpath expr="//field[@name='department_id']" position="after">
+                <field name="section_id" options="{'no_create': True}"/>
                 <field name="worker_type" string="Worker Type"/>
                 <field name="joining_date"/>
                 <field name="is_ot_eligible"/>
@@ -235,10 +236,16 @@
         <field name="inherit_id" ref="hr.view_employee_filter"/>
         <field name="arch" type="xml">
             <xpath expr="//searchpanel" position="inside">
+                <field name="section_id" string="Section" icon="fa-sitemap" enable_counters="1"/>
                 <field name="worker_type" string="Worker Type" icon="fa-user-tag" enable_counters="1"/>
             </xpath>
             <xpath expr="//field[@name='name']" position="after">
                 <field name="hours_last_month" string="Hours This Month"/>
+                <field name="section_id"/>
+            </xpath>
+            <xpath expr="//search" position="inside">
+                <filter name="group_by_section" string="Section"
+                        context="{'group_by': 'section_id'}"/>
             </xpath>
 
         </field>
