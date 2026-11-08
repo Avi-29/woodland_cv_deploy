@@ -491,3 +491,41 @@ $shadow:   0 1px 4px rgba(0,0,0,.07);
     font-size: 11.5px; font-weight: 600; color: #475569; cursor: pointer;
     input[type="checkbox"] { width: 14px; height: 14px; accent-color: $pri; flex-shrink: 0; }
 }
+// ── Section filter / Day View ────────────────────────────────────────────────
+.ahad_btn_active {
+    background: #eef2ff; border-color: #a5b4fc; color: #3730a3;
+    &:hover { background: #e0e7ff; }
+}
+.ahad_sub_section { font-size: 10px; color: #64748b; line-height: 1.2; }
+
+.ahad_day_picker {
+    display: flex; align-items: center; gap: 4px;
+    input[type="date"] { min-width: 140px; }
+}
+
+.ahad_day_bar { align-items: center; }
+.ahad_day_title { font-weight: 700; color: #0f172a; font-size: 13px; margin-right: 6px; }
+.ahad_day_chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 14px; border: 1px solid transparent;
+    font-size: 12px; cursor: pointer; background: #f1f5f9; color: #334155;
+    strong { font-weight: 700; }
+    &:hover { filter: brightness(.96); }
+}
+.ahad_day_all     { background: #f1f5f9; color: #334155; }
+.ahad_day_present { background: #d1fae5; color: #065f46; }
+.ahad_day_late    { background: #ffedd5; color: #9a3412; }
+.ahad_day_absent  { background: #fee2e2; color: #b91c1c; }
+.ahad_day_leave   { background: #dbeafe; color: #1e40af; }
+.ahad_day_off     { background: #e2e8f0; color: #475569; }
+.ahad_day_chip_on { border-color: currentColor; box-shadow: 0 0 0 1px currentColor inset; }
+
+.ahad_chip_orange { background: #ffedd5; color: #9a3412; }
+.ahad_chip_blue   { background: #dbeafe; color: #1e40af; }
+.ahad_chip_grey   { background: #f1f5f9; color: #64748b; }
+
+.ahad_day_sections { margin-bottom: 14px; flex: 0 0 auto; max-height: 260px; }
+.ahad_day_table {
+    td, th { text-align: center; }
+}
+.ahad_day_status { font-weight: 700; min-width: 64px; }

@@ -138,6 +138,16 @@ class HrEmployee(models.Model):
         )
         return [{'id': d.id, 'name': d.name} for d in depts]
 
+    # ── get available sections ───────────────────────────────────────────────
+    @api.model
+    def get_sections(self):
+        """Sections for the toolbar filter. department_id lets the dashboard
+        narrow the list to sections of the selected department."""
+        sections = self.env['hr.section'].search([], order='name')
+        return [{'id': s.id, 'name': s.name,
+                 'department_id': s.department_id.id or False}
+                for s in sections]
+
     # ── get available worker types ─────────────────────────────────────────────
     @api.model
     def get_worker_types(self):
@@ -147,17 +157,35 @@ class HrEmployee(models.Model):
             {'id': 'regular', 'name': 'Regular'},
         ]
 
-    # ── live "present today" counter (header button) ──────────────────────────
-    @api.model
-    def get_present_today_count(self, department_id=None, worker_type=None):
-        """Count of employees checked in today (Asia/Dhaka), scoped to the
-        same department / worker-type filters as the dashboard toolbar.
-        """
+    def _dashboard_domain(self, department_id=None, worker_type=None,
+                          section_id=None, search=''):
+        """Employee domain for the dashboard toolbar filters."""
         domain = []
         if department_id:
             domain.append(('department_id', '=', department_id))
+        if section_id:
+            domain.append(('section_id', '=', section_id))
         if worker_type:
             domain.append(('worker_type', '=', worker_type))
+        if search:
+            domain += ['|',
+                       ('name', 'ilike', search),
+                       ('zk_badge_no', 'ilike', search)]
+        return domain
+
+    def _dashboard_employees(self, domain):
+        """Employees matching `domain`, sorted by numeric badge number."""
+        return self.env['hr.employee'].search(domain).sorted(
+            key=lambda e: int(e.zk_badge_no) if e.zk_badge_no and e.zk_badge_no.isdigit() else 0)
+
+    # ── live "present today" counter (header button) ──────────────────────────
+    @api.model
+    def get_present_today_count(self, department_id=None, worker_type=None,
+                                section_id=None):
+        """Count of employees checked in today (Asia/Dhaka), scoped to the
+        same department / section / worker-type filters as the toolbar.
+        """
+        domain = self._dashboard_domain(department_id, worker_type, section_id)
         employees = self.env['hr.employee'].search(domain)
         if not employees:
             return {'present_count': 0, 'total_count': 0}
@@ -191,7 +219,7 @@ class HrEmployee(models.Model):
     @api.model
     def get_employee_leave_data(self, year, month,
                                 search='', page=1, per_page=20, department_id=None,
-                                worker_type=None):
+                                worker_type=None, section_id=None):
         """
         Args:
             year         (int|str): e.g. 2025
@@ -201,9 +229,8 @@ class HrEmployee(models.Model):
             per_page     (int)    : rows per page
             department_id (int|None): filter by department
             worker_type  (str|None): filter by worker type ('daily' or 'regular')
+            section_id   (int|None): filter by section
         """
-        TZ = 'Asia/Dhaka'
-
         dates = self._build_dates(year, month)
         if not dates:
             return {
@@ -212,24 +239,31 @@ class HrEmployee(models.Model):
                 'per_page': per_page, 'total_pages': 0,
             }
 
-        allowed_company_ids = self.env.companies.ids or [self.env.company.id]
-        domain = []
-        if department_id:
-            domain.append(('department_id', '=', department_id))
-        if worker_type:
-            domain.append(('worker_type', '=', worker_type))
-        if search:
-            domain += ['|',
-                       ('name', 'ilike', search),
-                       ('zk_badge_no', 'ilike', search)]
-
-        all_employees = self.env['hr.employee'].search(domain)
-        all_employees = all_employees.sorted(key=lambda e: int(e.zk_badge_no) if e.zk_badge_no and e.zk_badge_no.isdigit() else 0)
+        all_employees = self._dashboard_employees(
+            self._dashboard_domain(department_id, worker_type, section_id, search))
         total_count = len(all_employees)
         total_pages = max(1, -(-total_count // per_page))
 
         offset = (page - 1) * per_page
         employees = all_employees[offset: offset + per_page]
+
+        employee_data = self._build_attendance_rows(employees, dates)
+
+        return {
+            'employee_data': employee_data,
+            'filtered_duration_dates': dates[::-1],
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages,
+        }
+
+    def _build_attendance_rows(self, employees, dates, sandwich_dates=None):
+        """Per-employee day-by-day attendance rows for `dates` (YYYY-MM-DD
+        strings), as shown on the dashboard grid. `sandwich_dates` limits
+        the Sandwich Absent check to those dates (None = all of `dates`).
+        """
+        TZ = 'Asia/Dhaka'
 
         date_from = min(dates)
         date_to = max(dates)
@@ -527,6 +561,8 @@ class HrEmployee(models.Model):
             for d in dates:
                 if d > today_str:
                     continue  # don't sandwich a day that hasn't happened yet
+                if sandwich_dates is not None and d not in sandwich_dates:
+                    continue
                 entry = by_date[d]
                 # Only a plain, un-worked weekly off or un-worked public
                 # holiday can be flipped to Sandwich Absent.
@@ -573,6 +609,8 @@ class HrEmployee(models.Model):
                 'zk_badge_no': employee.zk_badge_no or '',
                 'department': employee.department_id.name if employee.department_id else '—',
                 'department_id': employee.department_id.id if employee.department_id else None,
+                'section': employee.section_id.name if employee.section_id else '—',
+                'section_id': employee.section_id.id or False,
                 'day_off': DAY_OFF_MAP.get(str(current_day_off_raw) if current_day_off_raw else '', ''),
                 'is_present_today': today_str in emp_att,
                 'leave_data': leave_data[::-1],
@@ -580,15 +618,112 @@ class HrEmployee(models.Model):
                 'total_present_count': total_present_count,
                 'leave_counts': leave_counts,
             })
+        return employee_data
+
+    # ── Day View: one date, every filtered employee ─────────────────────────
+    DAY_STATUSES = ('present', 'late', 'absent', 'leave', 'off')
+
+    def _day_status(self, entry):
+        """Group a grid cell into one of DAY_STATUSES."""
+        rtype = entry.get('record_type')
+        if rtype == 'leave':
+            return 'leave'
+        if rtype == 'absent' or entry.get('is_sandwich_absent'):
+            return 'absent'
+        if rtype == 'attendance':
+            return 'late' if entry.get('state') == 'L' else 'present'
+        return 'off'  # weekly off, public holiday, swap adjust day
+
+    @api.model
+    def get_employee_day_data(self, day, search='', page=1, per_page=20,
+                              department_id=None, worker_type=None,
+                              section_id=None, status=None):
+        """Attendance for a single date (YYYY-MM-DD, Asia/Dhaka).
+
+        Classifies every employee matching the filters (same rules as the
+        month grid, including Sandwich Absent), then returns:
+          - counts:          totals per status for all filtered employees
+          - section_summary: the same counts per section
+          - employee_data:   one page of employees, narrowed to `status`
+        """
+        try:
+            day_date = date.fromisoformat(day)
+        except (TypeError, ValueError):
+            day_date = self._dhaka_today()
+        day_str = day_date.isoformat()
+        # Neighbouring days are only loaded so the Sandwich Absent rule can
+        # judge `day`; their own cells are discarded.
+        dates = [(day_date + timedelta(days=i)).isoformat() for i in (-1, 0, 1)]
+
+        employees = self._dashboard_employees(
+            self._dashboard_domain(department_id, worker_type, section_id, search))
+        rows = self._build_attendance_rows(employees, dates, sandwich_dates={day_str})
+
+        counts = {s: 0 for s in self.DAY_STATUSES}
+        sections = {}
+        for row in rows:
+            entry = next(ld for ld in row['leave_data'] if ld['leave_date'] == day_str)
+            row['day'] = entry
+            row['day_status'] = self._day_status(entry)
+            counts[row['day_status']] += 1
+            sec = sections.setdefault(row['section_id'], dict(
+                {s: 0 for s in self.DAY_STATUSES}, name=row['section'],
+                section_id=row['section_id'], total=0))
+            sec[row['day_status']] += 1
+            sec['total'] += 1
+        counts['total'] = len(rows)
+
+        if status in self.DAY_STATUSES:
+            rows = [r for r in rows if r['day_status'] == status]
+        total_count = len(rows)
+        total_pages = max(1, -(-total_count // per_page))
+        offset = (page - 1) * per_page
+        page_rows = rows[offset: offset + per_page]
+
+        # First check-in / last check-out of the day for the visible page.
+        times = {}
+        if page_rows:
+            self.env.cr.execute("""
+                SELECT employee_id,
+                       to_char(MIN(check_in  AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka'), 'HH24:MI') AS check_in,
+                       to_char(MAX(check_out AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka'), 'HH24:MI') AS check_out,
+                       SUM(worked_hours) AS worked_hours
+                FROM   hr_attendance
+                WHERE  employee_id IN %s
+                  AND  (check_in AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Dhaka')::date = %s::date
+                GROUP  BY employee_id
+            """, (tuple(r['id'] for r in page_rows), day_str))
+            times = {t['employee_id']: t for t in self.env.cr.dictfetchall()}
+
+        employee_data = []
+        for row in page_rows:
+            t = times.get(row['id'], {})
+            employee_data.append({
+                'id': row['id'],
+                'name': row['name'],
+                'zk_badge_no': row['zk_badge_no'],
+                'department': row['department'],
+                'section': row['section'],
+                'day_off': row['day_off'],
+                'day': row['day'],
+                'day_status': row['day_status'],
+                'check_in': t.get('check_in') or '',
+                'check_out': t.get('check_out') or '',
+                'worked_hours': round(t.get('worked_hours') or 0.0, 2),
+            })
 
         return {
+            'day': day_str,
+            'counts': counts,
+            'section_summary': sorted(sections.values(), key=lambda s: s['name']),
             'employee_data': employee_data,
-            'filtered_duration_dates': dates[::-1],
             'total_count': total_count,
             'page': page,
             'per_page': per_page,
             'total_pages': total_pages,
         }
+
+
 
     # ── real "Absent" day counts (no leave filed, not a scheduled day off) ──
     def _get_real_absent_counts(self, employees, date_from, date_to):
@@ -699,7 +834,8 @@ class HrEmployee(models.Model):
     # ── yearly leave summary grid (12 months × SL/CL/LWP = 36 columns) ─────
     @api.model
     def get_employee_leave_summary(self, year, search='', page=1, per_page=20,
-                                    department_id=None, worker_type=None):
+                                    department_id=None, worker_type=None,
+                                    section_id=None):
         """
         Per-employee yearly leave-summary grid, paginated like
         get_employee_leave_data.
@@ -717,18 +853,8 @@ class HrEmployee(models.Model):
         except (TypeError, ValueError):
             y = fields.Date.context_today(self).year
 
-        domain = []
-        if department_id:
-            domain.append(('department_id', '=', department_id))
-        if worker_type:
-            domain.append(('worker_type', '=', worker_type))
-        if search:
-            domain += ['|',
-                       ('name', 'ilike', search),
-                       ('zk_badge_no', 'ilike', search)]
-
-        all_employees = self.env['hr.employee'].search(domain)
-        all_employees = all_employees.sorted(key=lambda e: int(e.zk_badge_no) if e.zk_badge_no and e.zk_badge_no.isdigit() else 0)
+        all_employees = self._dashboard_employees(
+            self._dashboard_domain(department_id, worker_type, section_id, search))
         total_count = len(all_employees)
         total_pages = max(1, -(-total_count // per_page))
 
@@ -814,6 +940,7 @@ class HrEmployee(models.Model):
                 'name': employee.name,
                 'zk_badge_no': employee.zk_badge_no or '',
                 'department': employee.department_id.name if employee.department_id else '—',
+                'section': employee.section_id.name if employee.section_id else '—',
                 'months': months_list,
                 'total': {
                     'sl': sum(m['sl'] for m in months_list),

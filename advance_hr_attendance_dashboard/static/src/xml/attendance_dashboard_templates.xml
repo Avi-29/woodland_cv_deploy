@@ -174,11 +174,21 @@
         <div class="ahad_header_right">
             <button class="ahad_btn ahad_present_counter"
                     t-on-click="onClickPresentCounter"
-                    title="Employees checked in today (Asia/Dhaka), for the selected Department / Worker Type — click to refresh">
+                    title="Employees checked in today (Asia/Dhaka), for the selected Department / Section / Worker Type — click to refresh">
                 <span class="ahad_live_dot"/>
                 Present: <strong t-out="state.presentCount"/><span class="ahad_present_total"> / <t t-out="state.presentTotal"/></span>
             </button>
-            <button class="ahad_btn ahad_btn_outline" t-on-click="onToggleLeaveSummary">
+            <button t-attf-class="ahad_btn ahad_btn_outline {{ state.viewMode === 'day' ? 'ahad_btn_active' : '' }}"
+                    t-on-click="onToggleDayView"
+                    title="See one day at a time: each employee's status, check-in and check-out">
+                <t t-if="state.viewMode === 'day'">
+                    <i class="fa fa-table"/> Month View
+                </t>
+                <t t-else="">
+                    <i class="fa fa-calendar-check-o"/> Day View
+                </t>
+            </button>
+            <button class="ahad_btn ahad_btn_outline" t-on-click="onToggleLeaveSummary" t-if="state.viewMode !== 'day'">
                 <t t-if="state.viewMode === 'attendance'">
                     <i class="fa fa-list-alt"/> Leave Summary
                 </t>
@@ -194,7 +204,16 @@
 
     <!-- ═══ TOOLBAR ═════════════════════════════════════════════════════ -->
     <div class="ahad_toolbar">
-        <div class="ahad_filter_group">
+        <div class="ahad_filter_group" t-if="state.viewMode === 'day'">
+            <label class="ahad_label">Date</label>
+            <div class="ahad_day_picker">
+                <button class="ahad_page_btn" title="Previous day" t-on-click="() => this.onShiftDay(-1)">‹</button>
+                <input type="date" class="ahad_select" t-att-value="state.selectedDay" t-on-change="onChangeDay"/>
+                <button class="ahad_page_btn" title="Next day" t-on-click="() => this.onShiftDay(1)">›</button>
+                <button class="ahad_page_btn" t-on-click="onDayToday">Today</button>
+            </div>
+        </div>
+        <div class="ahad_filter_group" t-if="state.viewMode !== 'day'">
             <label class="ahad_label">Year</label>
             <select class="ahad_select" t-on-change="onChangeYear">
                 <t t-foreach="yearOptions" t-as="yr" t-key="yr">
@@ -216,6 +235,15 @@
                 <option value="" t-att-selected="!state.selectedDepartment">All Departments</option>
                 <t t-foreach="departmentOptions" t-as="dept" t-key="dept.id">
                     <option t-att-value="dept.id" t-att-selected="dept.id === state.selectedDepartment" t-out="dept.name"/>
+                </t>
+            </select>
+        </div>
+        <div class="ahad_filter_group">
+            <label class="ahad_label">Section</label>
+            <select class="ahad_select" t-on-change="onChangeSection">
+                <option value="" t-att-selected="!state.selectedSection">All Sections</option>
+                <t t-foreach="sectionOptions" t-as="sec" t-key="sec.id">
+                    <option t-att-value="sec.id" t-att-selected="sec.id === state.selectedSection" t-out="sec.name"/>
                 </t>
             </select>
         </div>
@@ -271,6 +299,20 @@
         <span class="ahad_legend_item"><span class="ahad_swatch" style="background:#b71c1c;"/> LWP — Leave Without Pay</span>
         <span class="ahad_legend_tip">💡 Day-counts per employee, per month, for <t t-out="state.selectedYear"/> (Asia/Dhaka)</span>
     </div>
+    <div class="ahad_legend ahad_day_bar" t-if="state.viewMode === 'day'">
+        <span class="ahad_day_title" t-out="dayLabel"/>
+        <button t-attf-class="ahad_day_chip ahad_day_all {{ !state.dayStatus ? 'ahad_day_chip_on' : '' }}"
+                t-on-click="() => this.onClickDayStatus(null)">
+            All <strong t-out="state.dayCounts.total"/>
+        </button>
+        <t t-foreach="dayStatusOptions" t-as="st" t-key="st.key">
+            <button t-attf-class="ahad_day_chip ahad_day_{{ st.key }} {{ state.dayStatus === st.key ? 'ahad_day_chip_on' : '' }}"
+                    t-on-click="() => this.onClickDayStatus(st.key)">
+                <t t-out="st.label"/> <strong t-out="state.dayCounts[st.key]"/>
+            </button>
+        </t>
+        <span class="ahad_legend_tip">💡 Click a status to list only those employees. Click a section below to filter to it.</span>
+    </div>
 
     <!-- ═══ LOADING ══════════════════════════════════════════════════════ -->
     <div class="ahad_loading" t-if="state.loading">
@@ -325,7 +367,10 @@
                             <!-- Badge -->
                             <td class="ahad_td_sticky ahad_td_badge" t-out="employee.zk_badge_no or '—'"/>
                             <!-- Department -->
-                            <td class="ahad_td_sticky ahad_td_dept" t-out="employee.department or '—'"/>
+                            <td class="ahad_td_sticky ahad_td_dept">
+                                <t t-out="employee.department or '—'"/>
+                                <div class="ahad_sub_section" t-if="employee.section and employee.section !== '—'" t-out="employee.section"/>
+                            </td>
                             <!-- Day off -->
                             <td class="ahad_td_sticky ahad_td_dayoff" t-out="employee.day_off or '—'"/>
                             <!-- Pres count — LEFT sticky -->
@@ -383,6 +428,88 @@
         </div>
     </t>
 
+    <t t-elif="state.viewMode === 'day'">
+        <!-- ═══ DAY VIEW: per-section totals ═══════════════════════════════ -->
+        <div class="ahad_table_outer ahad_day_sections" t-if="state.daySections.length > 1">
+            <div class="ahad_table_scroll">
+                <table class="ahad_table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">Section</th>
+                            <th>Total</th>
+                            <th>Present</th>
+                            <th>Late</th>
+                            <th>Absent</th>
+                            <th>Leave</th>
+                            <th>Off / Holiday</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="state.daySections" t-as="sec" t-key="sec.section_id or sec_index"
+                            t-attf-class="{{ sec.section_id ? 'ahad_clickable' : '' }}"
+                            t-on-click="() => this.onClickDaySection(sec.section_id)"
+                            t-att-title="sec.section_id ? 'Show only this section' : ''">
+                            <td style="text-align:left;font-weight:600;" t-out="sec.name"/>
+                            <td t-out="sec.total"/>
+                            <td><span class="ahad_chip ahad_chip_green" t-out="sec.present"/></td>
+                            <td><span class="ahad_chip ahad_chip_orange" t-out="sec.late"/></td>
+                            <td><span t-att-class="sec.absent ? 'ahad_chip ahad_chip_red' : 'ahad_chip ahad_chip_grey'" t-out="sec.absent"/></td>
+                            <td><span class="ahad_chip ahad_chip_blue" t-out="sec.leave"/></td>
+                            <td><span class="ahad_chip ahad_chip_grey" t-out="sec.off"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ═══ DAY VIEW: employees ════════════════════════════════════════ -->
+        <div class="ahad_empty" t-if="!state.dayData.length">
+            <span class="ahad_empty_icon">📅</span>
+            <p>No employees found for the selected filters.</p>
+        </div>
+        <div class="ahad_table_outer" t-else="">
+            <div class="ahad_table_scroll">
+                <table class="ahad_table ahad_day_table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">Employee</th>
+                            <th>Badge</th>
+                            <th style="text-align:left;">Department</th>
+                            <th style="text-align:left;">Section</th>
+                            <th>Status</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Hours</th>
+                            <th>Day Off</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="state.dayData" t-as="employee" t-key="employee.id">
+                            <td class="ahad_clickable" style="text-align:left;"
+                                t-on-click="(ev) => this.onClickEmployee(ev, employee.id)"
+                                title="Open employee record (Ctrl/Cmd+click to open in a new tab)">
+                                <span class="ahad_avatar" t-out="employee.name[0]"/>
+                                <span class="ahad_emp_name" t-out="employee.name"/>
+                            </td>
+                            <td t-out="employee.zk_badge_no or '—'"/>
+                            <td style="text-align:left;" t-out="employee.department or '—'"/>
+                            <td style="text-align:left;" t-out="employee.section or '—'"/>
+                            <td t-attf-class="ahad_day_status {{ cellCursor(employee.day) or (employee.day.is_day_off_or_holiday ? 'ahad_clickable' : '') }} {{ employee.day.is_sandwich_absent ? 'ahad_sandwich_absent' : '' }}"
+                                t-attf-style="background:{{ employee.day.color }};"
+                                t-att-title="employee.day.tooltip or ''"
+                                t-on-click="() => this.onClickDayCell(employee)"
+                                t-out="employee.day.state or ''"/>
+                            <td t-out="employee.check_in or '—'"/>
+                            <td t-out="employee.check_out or '—'"/>
+                            <td t-out="employee.worked_hours ? employee.worked_hours.toFixed(2) : '—'"/>
+                            <td t-out="employee.day_off or '—'"/>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </t>
+
     <t t-else="">
         <!-- ═══ EMPTY STATE (leave summary) ════════════════════════════════ -->
         <div class="ahad_empty" t-if="!state.leaveSummaryData.length">
@@ -429,7 +556,10 @@
                                 <span class="ahad_emp_name" t-out="employee.name"/>
                             </td>
                             <td class="ahad_td_sticky ahad_td_badge" t-out="employee.zk_badge_no or '—'"/>
-                            <td class="ahad_td_sticky ahad_td_dept" t-out="employee.department"/>
+                            <td class="ahad_td_sticky ahad_td_dept">
+                                <t t-out="employee.department"/>
+                                <div class="ahad_sub_section" t-if="employee.section and employee.section !== '—'" t-out="employee.section"/>
+                            </td>
                             <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:700;background:#6CC1ED40;color:#0b5f8a;" t-out="employee.total.sl"/>
                             <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:700;background:#30C38140;color:#1b6b45;" t-out="employee.total.cl"/>
                             <td style="text-align:center;padding:4px 2px;font-size:12px;font-weight:700;background:#F0605040;color:#96261b;" t-out="employee.total.lwp"/>

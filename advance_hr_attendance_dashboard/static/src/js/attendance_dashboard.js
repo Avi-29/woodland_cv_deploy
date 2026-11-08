@@ -13,7 +13,9 @@ function todayInDhaka() {
         day:   '2-digit',
     }).formatToParts(now);
     const get = (t) => parseInt(parts.find(p => p.type === t).value, 10);
-    return { year: get('year'), month: get('month'), day: get('day') };
+    const year = get('year'), month = get('month'), day = get('day');
+    const pad = (n) => String(n).padStart(2, '0');
+    return { year, month, day, iso: `${year}-${pad(month)}-${pad(day)}` };
 }
 
 class AttendanceDashboard extends Component {
@@ -33,6 +35,7 @@ class AttendanceDashboard extends Component {
             selectedYear:          dhaka.year,
             selectedMonth:         dhaka.month,
             selectedDepartment:    null,
+            selectedSection:       null,
             selectedWorkerType:    null,
             page:                  1,
             perPage:               5,
@@ -70,8 +73,14 @@ class AttendanceDashboard extends Component {
                 generating:           false,
             },
             // ── Leave Summary grid (toggled in place of the attendance table) ──
-            viewMode:         'attendance',   // 'attendance' | 'leaveSummary'
+            viewMode:         'attendance',   // 'attendance' | 'leaveSummary' | 'day'
             leaveSummaryData: [],
+            // ── Day View (one date, every filtered employee) ───────────────
+            selectedDay:      todayInDhaka().iso,
+            dayStatus:        null,           // null = all, else present/late/absent/leave/off
+            dayData:          [],
+            dayCounts:        { total: 0, present: 0, late: 0, absent: 0, leave: 0, off: 0 },
+            daySections:      [],
             // ── Live "present today" counter (header button) ───────────────
             presentCount:     0,
             presentTotal:     0,
@@ -87,10 +96,12 @@ class AttendanceDashboard extends Component {
 
         this._searchTimer = null;
         this._departments = [];
+        this._sections = [];
         this._workerTypes = [];
         this._liveTimer = null;
         onMounted(() => {
             this._loadDepartments();
+            this._loadSections();
             this._loadWorkerTypes();
             this._fetchData();
             this._fetchPresentCount();
@@ -110,6 +121,15 @@ class AttendanceDashboard extends Component {
         }
     }
 
+    async _loadSections() {
+        try {
+            this._sections = await this.orm.call('hr.employee', 'get_sections', []);
+        } catch (e) {
+            this._sections = [];
+        }
+        this.render();
+    }
+
     async _loadWorkerTypes() {
         try {
             this._workerTypes = await this.orm.call('hr.employee', 'get_worker_types', []);
@@ -122,6 +142,9 @@ class AttendanceDashboard extends Component {
     async _fetchData() {
         if (this.state.viewMode === 'leaveSummary') {
             return this._fetchLeaveSummary();
+        }
+        if (this.state.viewMode === 'day') {
+            return this._fetchDayData();
         }
         this.state.loading = true;
         try {
@@ -136,6 +159,7 @@ class AttendanceDashboard extends Component {
                     this.state.perPage,
                     this.state.selectedDepartment,
                     this.state.selectedWorkerType,
+                    this.state.selectedSection,
                 ]
             );
             this.state.filteredDurationDates = result.filtered_duration_dates;
@@ -162,6 +186,7 @@ class AttendanceDashboard extends Component {
                     this.state.perPage,
                     this.state.selectedDepartment,
                     this.state.selectedWorkerType,
+                    this.state.selectedSection,
                 ]
             );
             this.state.leaveSummaryData = result.employee_data;
@@ -174,6 +199,35 @@ class AttendanceDashboard extends Component {
         }
     }
 
+    async _fetchDayData() {
+        this.state.loading = true;
+        try {
+            const result = await this.orm.call(
+                'hr.employee',
+                'get_employee_day_data',
+                [
+                    this.state.selectedDay,
+                    this.state.searchValue,
+                    this.state.page,
+                    this.state.perPage,
+                    this.state.selectedDepartment,
+                    this.state.selectedWorkerType,
+                    this.state.selectedSection,
+                    this.state.dayStatus,
+                ]
+            );
+            this.state.dayData     = result.employee_data;
+            this.state.dayCounts   = result.counts;
+            this.state.daySections = result.section_summary;
+            this.state.totalCount  = result.total_count;
+            this.state.totalPages  = result.total_pages;
+        } catch (e) {
+            this.notification.add('Failed to load day attendance.', { type: 'danger' });
+        } finally {
+            this.state.loading = false;
+        }
+    }
+
     // Live count of employees checked in today (Asia/Dhaka), scoped to the
     // current Department / Worker Type filters.
     async _fetchPresentCount() {
@@ -181,7 +235,7 @@ class AttendanceDashboard extends Component {
             const result = await this.orm.call(
                 'hr.employee',
                 'get_present_today_count',
-                [this.state.selectedDepartment, this.state.selectedWorkerType]
+                [this.state.selectedDepartment, this.state.selectedWorkerType, this.state.selectedSection]
             );
             this.state.presentCount = result.present_count;
             this.state.presentTotal = result.total_count;
@@ -199,12 +253,64 @@ class AttendanceDashboard extends Component {
         this._fetchData();
     }
 
+    // Toggle the Day View: one date, one row per employee, with status totals.
+    onToggleDayView() {
+        this.state.viewMode = this.state.viewMode === 'day' ? 'attendance' : 'day';
+        this.state.page = 1;
+        this._fetchData();
+    }
+
+    // ══════════════════════════════════════════════ DAY VIEW EVENTS
+    onChangeDay(ev) {
+        if (!ev.target.value) return;
+        this.state.selectedDay = ev.target.value;
+        this.state.page = 1; this._fetchData();
+    }
+    onShiftDay(delta) {
+        const [y, m, d] = this.state.selectedDay.split('-').map(Number);
+        const dt = new Date(Date.UTC(y, m - 1, d + delta));
+        this.state.selectedDay = dt.toISOString().slice(0, 10);
+        this.state.page = 1; this._fetchData();
+    }
+    onDayToday() {
+        this.state.selectedDay = todayInDhaka().iso;
+        this.state.page = 1; this._fetchData();
+    }
+    onClickDayStatus(status) {
+        this.state.dayStatus = this.state.dayStatus === status ? null : status;
+        this.state.page = 1; this._fetchData();
+    }
+    // Click a row of the per-section summary → filter to that section.
+    onClickDaySection(sectionId) {
+        if (!sectionId) return;
+        this.state.selectedSection = this.state.selectedSection === sectionId ? null : sectionId;
+        this.state.page = 1; this._fetchData(); this._fetchPresentCount();
+    }
+    onClickDayCell(employee) {
+        const leave = employee.day;
+        if (leave.is_day_off_or_holiday) {
+            // OFF/P or PH/P — open the attendance, like the grid's "P" half.
+            this.action.doAction({ type: 'ir.actions.act_window', res_model: 'hr.attendance', res_id: leave.record_id, views: [[false, 'form']], target: 'new' });
+            return;
+        }
+        this.onClickCell(leave, employee.id);
+    }
+
     // ══════════════════════════════════════════════ TOOLBAR EVENTS
     onChangeYear(ev)   { this.state.selectedYear  = parseInt(ev.target.value, 10); this.state.page = 1; this._fetchData(); }
     onChangeMonth(ev)  { this.state.selectedMonth = parseInt(ev.target.value, 10); this.state.page = 1; this._fetchData(); }
     onChangeDepartment(ev) {
         const val = ev.target.value;
         this.state.selectedDepartment = val ? parseInt(val, 10) : null;
+        // Drop a section that doesn't belong to the new department.
+        if (this.state.selectedSection && !this.sectionOptions.some(s => s.id === this.state.selectedSection)) {
+            this.state.selectedSection = null;
+        }
+        this.state.page = 1; this._fetchData(); this._fetchPresentCount();
+    }
+    onChangeSection(ev) {
+        const val = ev.target.value;
+        this.state.selectedSection = val ? parseInt(val, 10) : null;
         this.state.page = 1; this._fetchData(); this._fetchPresentCount();
     }
     onChangeWorkerType(ev) {
@@ -459,6 +565,7 @@ class AttendanceDashboard extends Component {
                             100000,
                             deptId,
                             wType,
+                            this.state.selectedSection,
                         ]
                     );
                     for (const emp of result.employee_data) {
@@ -576,6 +683,28 @@ class AttendanceDashboard extends Component {
 
     get departmentOptions()  { return this._departments || []; }
     get workerTypeOptions()  { return this._workerTypes || []; }
+    // Sections of the selected department (plus shared ones with no department).
+    get sectionOptions() {
+        const dept = this.state.selectedDepartment;
+        return (this._sections || []).filter(s => !dept || !s.department_id || s.department_id === dept);
+    }
+
+    get dayStatusOptions() {
+        return [
+            { key: 'present', label: 'Present' },
+            { key: 'late',    label: 'Late' },
+            { key: 'absent',  label: 'Absent' },
+            { key: 'leave',   label: 'Leave' },
+            { key: 'off',     label: 'Off / Holiday' },
+        ];
+    }
+
+    get dayLabel() {
+        const [y, m, d] = this.state.selectedDay.split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+        });
+    }
 
     get paginationInfo() {
         const s = (this.state.page - 1) * this.state.perPage + 1;
