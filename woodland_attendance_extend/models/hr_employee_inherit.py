@@ -108,6 +108,29 @@ class HrEmployee(models.Model):
             open_line.date_end = effective_date - timedelta(days=1)
         self._open_dayoff_history_line(new_day_off_day, effective_date)
 
+    def _bonus_rule_source(self):
+        """Record that holds this employee's attendance-bonus settings: the
+        section, or the department for employees with no section yet."""
+        self.ensure_one()
+        return self.section_id or self.department_id
+
+    def is_attendance_bonus_eligible(self):
+        """True when the employee's section is bonus-eligible: perfect
+        attendance earns the bonus and a genuine absence costs 2 days."""
+        self.ensure_one()
+        source = self._bonus_rule_source()
+        return bool(source and source.eligible_for_bonus)
+
+    def is_attendance_bonus_excluded(self):
+        """Managers who never get the bonus (the 2x absent cut still
+        applies): the department's Manager, or anyone listed under
+        "Managers (No Bonus)" on their section."""
+        self.ensure_one()
+        source = self._bonus_rule_source()
+        if self.department_id and self.department_id.manager_id == self:
+            return True
+        return bool(source) and self in source.bonus_excluded_manager_ids
+
     def get_day_off_day(self, on_date):
         """Weekly day-off in effect on `on_date` ('0'=Monday..'6'=Sunday, or
         False for "no day off"), following the recorded history. Falls back
@@ -270,8 +293,10 @@ class HrDepartment(models.Model):
     eligible_for_bonus = fields.Boolean(
         string='Eligible for Attendance Bonus',
         default=True,
-        help='If enabled, absent employees in this department lose 2 days salary '
-             'per absence (instead of 1). Perfect attendance earns a 500 bonus.',
+        help='Only used for employees with no Section — otherwise the '
+             'Section\'s setting applies. If enabled, absent employees lose 2 '
+             'days salary per absence (instead of 1). Perfect attendance earns '
+             'a 500 bonus.',
     )
     bonus_excluded_manager_ids = fields.Many2many(
         'hr.employee', 'hr_department_bonus_excluded_rel',

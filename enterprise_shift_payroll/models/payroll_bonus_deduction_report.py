@@ -51,7 +51,7 @@ class PayrollBonusDeductionReportWizard(models.TransientModel):
         (pay_days < 6) from this report, same population it uses.
         """
         emp = slip.employee_id
-        dept_eligible = bool(emp.department_id and emp.department_id.eligible_for_bonus)
+        dept_eligible = emp.is_attendance_bonus_eligible()
 
         scheduled_dates = slip._get_all_working_dates(emp, slip.date_from, slip.date_to)
         pub_holiday_dates = slip._get_public_holiday_dates(slip.date_from, slip.date_to)
@@ -72,7 +72,7 @@ class PayrollBonusDeductionReportWizard(models.TransientModel):
         """Just the 2x genuine-absent penalty money — 0 for departments
         that aren't bonus-eligible (they're never charged at 2x)."""
         emp = slip.employee_id
-        dept_eligible = bool(emp.department_id and emp.department_id.eligible_for_bonus)
+        dept_eligible = emp.is_attendance_bonus_eligible()
         if not dept_eligible:
             return 0.0
         return slip.genuine_absent_days * slip.absent_deduct_per_day

@@ -11,6 +11,7 @@
             <list editable="bottom">
                 <field name="name"/>
                 <field name="department_id"/>
+                <field name="eligible_for_bonus"/>
             </list>
         </field>
     </record>
@@ -28,6 +29,9 @@
                     <group>
                         <field name="name"/>
                         <field name="department_id"/>
+                        <field name="eligible_for_bonus"/>
+                        <field name="bonus_excluded_manager_ids" widget="many2many_tags"
+                               invisible="not eligible_for_bonus"/>
                         <field name="active" invisible="1"/>
                     </group>
                     <notebook>
@@ -57,6 +61,8 @@
             <search>
                 <field name="name"/>
                 <field name="department_id"/>
+                <filter name="bonus_eligible" string="Bonus Eligible" domain="[('eligible_for_bonus', '=', True)]"/>
+                <filter name="not_bonus_eligible" string="Not Bonus Eligible" domain="[('eligible_for_bonus', '=', False)]"/>
                 <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
                 <filter name="group_by_department" string="Department"
                         context="{'group_by': 'department_id'}"/>

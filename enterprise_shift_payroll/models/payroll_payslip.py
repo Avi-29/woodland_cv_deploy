@@ -453,10 +453,8 @@ class PayrollPayslip(models.Model):
 
         stats = self._analyse_attendance(employee, date_from, date_to, scheduled_dates, pub_holidays)
 
-        dept_eligible = bool(
-            employee.department_id and employee.department_id.eligible_for_bonus
-        )
-        # Eligible depts: genuine no-show absents → 2× per_day deduction.
+        dept_eligible = employee.is_attendance_bonus_eligible()
+        # Eligible sections: genuine no-show absents → 2× per_day deduction.
         # Sandwich absents → always 1× for everyone. marked_as_day_off days
         # are neutral (see _analyse_attendance) — no deduction at all.
         absent_rate = per_day * 2 if dept_eligible else per_day
@@ -472,14 +470,11 @@ class PayrollPayslip(models.Model):
         unpaid_ded  = stats['unpaid_leave_days'] * per_day
         total_ded   = absent_ded + late_ded + unpaid_ded
 
-        # No bonus for the department's Manager or anyone listed in its
-        # "Managers (No Bonus)" — checked against the employee's CURRENT
-        # department only, so a transfer automatically drops the exclusion.
-        # The 2× absent cut above still applies to them.
-        dept = employee.department_id
-        is_dept_manager = bool(dept) and (
-            dept.manager_id == employee or employee in dept.bonus_excluded_manager_ids
-        )
+        # No bonus for the department's Manager or anyone listed in the
+        # section's "Managers (No Bonus)" — checked against the employee's
+        # CURRENT section only, so a transfer automatically drops the
+        # exclusion. The 2× absent cut above still applies to them.
+        is_dept_manager = employee.is_attendance_bonus_excluded()
         bonus = 0.0
         if dept_eligible and not is_dept_manager:
             perfect = (
@@ -1062,9 +1057,7 @@ class AttendanceExportWizard(models.TransientModel):
 
         for slip in sorted_payslips:
             emp = slip.employee_id
-            dept_eligible = bool(
-                emp.department_id and emp.department_id.eligible_for_bonus
-            )
+            dept_eligible = emp.is_attendance_bonus_eligible()
 
             scheduled_dates = slip._get_all_working_dates(
                 emp, slip.date_from, slip.date_to
@@ -1583,9 +1576,7 @@ class ImportPayslipsWizard(models.TransientModel):
                              sheet's own "net + penalty + advance" shape)
               - total_deduct : Total Deduct = AD + H&S (TAX not tracked)
             """
-            dept_eligible = bool(
-                emp.department_id and emp.department_id.eligible_for_bonus
-            )
+            dept_eligible = emp.is_attendance_bonus_eligible()
             scheduled_dates = slip._get_all_working_dates(
                 emp, slip.date_from, slip.date_to
             )
