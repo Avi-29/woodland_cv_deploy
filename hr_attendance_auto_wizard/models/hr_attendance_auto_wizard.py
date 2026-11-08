@@ -89,13 +89,15 @@ class HrAttendanceAutoWizard(models.TransientModel):
         leaves = self.env['hr.leave'].search([
             ('employee_id', '=', employee.id),
             ('state', '=', 'validate'),
-            ('date_from', '<=', datetime.combine(self.date_to, time.max)),
-            ('date_to', '>=', datetime.combine(self.date_from, time.min)),
+            ('request_date_from', '<=', self.date_to),
+            ('request_date_to', '>=', self.date_from),
         ])
+        # The leave's own (local) dates — date_from/date_to are UTC, so a
+        # leave starting at local midnight would also cover the day before.
         leave_dates = set()
         for leave in leaves:
-            d = leave.date_from.date()
-            end = leave.date_to.date()
+            d = leave.request_date_from
+            end = leave.request_date_to
             while d <= end:
                 leave_dates.add(d)
                 d += timedelta(days=1)

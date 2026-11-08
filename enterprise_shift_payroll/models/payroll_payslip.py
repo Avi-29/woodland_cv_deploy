@@ -619,11 +619,14 @@ class PayrollPayslip(models.Model):
                 att_by_date[d] = att
 
         # ── 2. build leave sets ───────────────────────────────────────
+        # Use the leave's own (Asia/Dhaka) dates. date_from/date_to are
+        # UTC datetimes: a leave starting at Dhaka midnight is stored as
+        # 18:00 the day before, so .date() on them adds an extra day.
         leaves = Leave.search([
             ('employee_id', '=', employee.id),
             ('state', '=', 'validate'),
-            ('date_from', '<=', str(date_to)),
-            ('date_to', '>=', str(date_from)),
+            ('request_date_from', '<=', date_to),
+            ('request_date_to', '>=', date_from),
         ])
 
         paid_leave_dates = set()
@@ -631,8 +634,8 @@ class PayrollPayslip(models.Model):
         lwp_dates = set()
 
         for leave in leaves:
-            lf = max(leave.date_from.date(), date_from)
-            lt = min(leave.date_to.date(), date_to)
+            lf = max(leave.request_date_from, date_from)
+            lt = min(leave.request_date_to, date_to)
             cursor = lf
             is_lwp = (
                 (leave.holiday_status_id.leave_code or '').upper() == 'LWP'
