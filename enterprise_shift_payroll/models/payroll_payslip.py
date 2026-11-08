@@ -2199,22 +2199,16 @@ class ImportPayslipsWizard(models.TransientModel):
             'num_format': '#,##0', 'align': 'center', 'valign': 'vcenter',
         })
 
-        # Fixed department order/list, matching the reference workbook's
-        # own Sheet3 exactly (including its spacing) — always shown, even
-        # for a department with no employees this period, so "Total :"
-        # and everything below it lands on the same row every month.
-        # Departments outside this list (new ones added later) are
-        # appended afterwards rather than silently dropped.
-        FIXED_DEPARTMENT_ORDER = [
-            'ADMIN', 'SALES', 'ACCOUNTS', 'MARKETING', 'AUTO MOBILE',
-            'BATCH PLANT', 'ELECTRICAL', 'LABORATORY', 'MECHANICAL',
-            'ORE DRESSING', 'OXYGEN PLANT', 'PRINTING  & PACKEGING',
-            'PRODUCTION', 'SECURITY', 'STOCK', 'STORE',
-        ]
+        # Rows = the departments stored in Odoo (active ones, by name),
+        # shown even with no employees this period so the layout stays the
+        # same month to month. Anything else that has payslips (e.g. an
+        # archived department, or 'No Department') is appended after.
+        stored_departments = self.env['hr.department'].search([]).mapped('name')
+        stored_departments = sorted(set(stored_departments))
 
         def _dept_row_order(dept_dict):
-            extra = sorted(d for d in dept_dict if d not in FIXED_DEPARTMENT_ORDER)
-            return FIXED_DEPARTMENT_ORDER + extra
+            extra = sorted(d for d in dept_dict if d not in stored_departments)
+            return stored_departments + extra
 
         def _write_summary_table(target_ws, start_row, heading, dept_dict):
             target_ws.merge_range(start_row, 0, start_row, len(SUMMARY_COLS) - 1, heading, title_fmt)
