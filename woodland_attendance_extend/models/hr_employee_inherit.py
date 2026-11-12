@@ -73,12 +73,12 @@ class HrEmployee(models.Model):
 
     def write(self, vals):
         if 'day_off_day' in vals:
-            effective_date = (
-                self.env.context.get('dayoff_effective_date')
-                or fields.Date.context_today(self)
-            )
+            explicit_date = self.env.context.get('dayoff_effective_date')
+            effective_date = explicit_date or fields.Date.context_today(self)
             for emp in self:
-                if vals['day_off_day'] != emp.day_off_day:
+                # With an explicit (possibly back-dated) effective date the
+                # history can change even when the current value doesn't.
+                if explicit_date or vals['day_off_day'] != emp.day_off_day:
                     emp._log_dayoff_change(vals['day_off_day'], effective_date)
         return super().write(vals)
 
@@ -91,21 +91,36 @@ class HrEmployee(models.Model):
         })
 
     def _log_dayoff_change(self, new_day_off_day, effective_date):
-        """Close the currently open weekly-day-off history line and open a
-        new one dated from `effective_date`, so get_day_off_day() keeps
-        resolving past dates to whichever day off was active back then."""
+        """Make `new_day_off_day` the weekly day off from `effective_date`
+        onward, so get_day_off_day() keeps resolving earlier dates to
+        whichever day off was active back then.
+
+        `effective_date` may be back-dated before the current line's start:
+        every line starting on/after it is replaced, and the line covering
+        the day before is cut to end there.
+        """
         self.ensure_one()
         History = self.env['hr.employee.dayoff.history'].sudo()
-        open_line = History.search([
+        superseded = History.search([
             ('employee_id', '=', self.id),
-            ('date_end', '=', False),
+            ('date_start', '>=', effective_date),
+        ])
+        # The line in effect on the day before effective_date (it may end
+        # exactly then, or run past it).
+        covering = History.search([
+            ('employee_id', '=', self.id),
+            ('date_start', '<', effective_date),
+            '|', ('date_end', '=', False),
+                 ('date_end', '>=', effective_date - timedelta(days=1)),
         ], limit=1, order='date_start desc')
-        if open_line and open_line.date_start == effective_date:
-            # Already changed today — update in place instead of stacking rows.
-            open_line.day_off_day = new_day_off_day
+        superseded.unlink()
+        if covering and covering.day_off_day == new_day_off_day:
+            # Same day off already in effect the day before — extend it
+            # instead of stacking an identical row.
+            covering.date_end = False
             return
-        if open_line:
-            open_line.date_end = effective_date - timedelta(days=1)
+        if covering:
+            covering.date_end = effective_date - timedelta(days=1)
         self._open_dayoff_history_line(new_day_off_day, effective_date)
 
     def _bonus_rule_source(self):
