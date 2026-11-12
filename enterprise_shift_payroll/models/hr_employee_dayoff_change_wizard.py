@@ -1,4 +1,5 @@
-from odoo import models, fields
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 
 
 class HrEmployeeDayoffChangeWizard(models.TransientModel):
@@ -16,7 +17,8 @@ class HrEmployeeDayoffChangeWizard(models.TransientModel):
     new_day_off = fields.Selection([
         ('0', 'Monday'), ('1', 'Tuesday'), ('2', 'Wednesday'),
         ('3', 'Thursday'), ('4', 'Friday'), ('5', 'Saturday'), ('6', 'Sunday'),
-    ], string='New Weekly Day Off', required=True)
+    ], string='New Weekly Day Off',
+        help="Required for Confirm. Leave empty when using Clear Day Off.")
     effective_date = fields.Date(
         string='Effective From', required=True,
         default=fields.Date.context_today,
@@ -28,9 +30,21 @@ class HrEmployeeDayoffChangeWizard(models.TransientModel):
 
     def action_confirm(self):
         self.ensure_one()
+        if not self.new_day_off:
+            raise UserError(_("Select the new weekly day off, or use "
+                              "Clear Day Off to remove it."))
+        return self._apply_day_off(self.new_day_off)
+
+    def action_clear(self):
+        """Remove the weekly day off from the effective date onward; dates
+        before it keep resolving to the day off that was active then."""
+        self.ensure_one()
+        return self._apply_day_off(False)
+
+    def _apply_day_off(self, day_off):
         self.employee_id.with_context(
             dayoff_effective_date=self.effective_date,
-        ).write({'day_off_day': self.new_day_off})
+        ).write({'day_off_day': day_off})
         if self.note:
             line = self.env['hr.employee.dayoff.history'].sudo().search([
                 ('employee_id', '=', self.employee_id.id),

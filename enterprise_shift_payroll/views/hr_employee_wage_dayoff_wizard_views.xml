@@ -49,6 +49,10 @@
                 <footer>
                     <button string="Confirm" name="action_confirm"
                             type="object" class="btn-primary"/>
+                    <button string="Clear Day Off" name="action_clear"
+                            type="object" class="btn-secondary"
+                            invisible="not current_day_off"
+                            confirm="Remove this employee's weekly day off from the effective date onward?"/>
                     <button string="Cancel" special="cancel"/>
                 </footer>
             </form>
