@@ -79,6 +79,7 @@
                        invisible="overtime_status not in ['to_approve'] "/>
                 <field name="is_late" readonly="1"/>
                 <field name="marked_as_day_off"/>
+                <field name="is_auto_checkout"/>
                 <field name="notes"/>
             </xpath>
             <xpath expr="//notebook/page[1]" position="attributes">

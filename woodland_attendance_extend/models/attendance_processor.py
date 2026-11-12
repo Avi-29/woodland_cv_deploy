@@ -168,8 +168,11 @@ class ZkAttendanceProcessor(models.Model):
                 ('check_out', '!=', False),
             ], limit=1, order='check_out desc')
 
-            # If latest checkout is within 4 hours of current punch → update checkout instead of new check-in
-            if latest_closed_att:
+            # If latest checkout is within 4 hours of current punch → update checkout instead of new check-in.
+            # Skip this when that checkout was auto-generated (cron / long-open
+            # auto-close): it is a synthetic time, not a real exit, so the next
+            # face punch must start a fresh check-in.
+            if latest_closed_att and not latest_closed_att.is_auto_checkout:
                 diff_minutes = (punch.punch_time - latest_closed_att.check_out).total_seconds() / 60.0
                 if diff_minutes <= 240:
                     latest_closed_att.write({'check_out': punch.punch_time})
@@ -192,6 +195,7 @@ class ZkAttendanceProcessor(models.Model):
             open_att.write({
                 'check_out': open_att.check_in + timedelta(hours=checkout_threshold),
                 'marked_as_day_off': True,
+                'is_auto_checkout': True,
                 'notes': f'Auto-closed: punch received after {checkout_threshold:g}h without checkout.',
             })
             self._do_checkin(punch, employee, local_punch_naive)
@@ -268,6 +272,7 @@ class ZkAttendanceProcessor(models.Model):
             att.with_context(no_check_overlap=True).write({
                 'check_out': att.check_in + timedelta(hours=threshold),
                 'marked_as_day_off': True,
+                'is_auto_checkout': True,
                 'notes': f'Auto Checkout: {threshold:g}h limit reached (cron)',
             })
             closed += 1

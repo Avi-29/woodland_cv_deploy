@@ -14,6 +14,11 @@ class HrAttendance(models.Model):
     marked_as_day_off = fields.Boolean(string="Marked as Day-Off", default=False)
     shift_id = fields.Many2one('hr.shift', string="Shift", index=True)
     notes = fields.Text(string="Notes")
+    is_auto_checkout = fields.Boolean(
+        string="Auto Checkout", default=False, readonly=True,
+        help="Checkout time was generated automatically (cron or long-open "
+             "auto-close), not by a real punch. A punch within 4 hours of "
+             "such a checkout starts a new check-in instead of extending it.")
     hours_to_approve =fields.Float()
     zk_teco = fields.Char(related='employee_id.zk_badge_no')
 
