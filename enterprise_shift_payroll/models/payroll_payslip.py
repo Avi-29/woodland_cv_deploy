@@ -1673,7 +1673,7 @@ class ImportPayslipsWizard(models.TransientModel):
 
         row = 2
         # grand_totals / dept_summary only cover rows that land on this
-        # sheet — Low Attendance employees (pay_days < 6) are excluded
+        # sheet — Low Attendance employees (0 pay days) are excluded
         # from both, so this sheet's own GRAND TOTAL and the Department
         # Summary / Summary sheets built from dept_summary all reconcile
         # against the same "main list" population, not a hidden extra
@@ -1693,12 +1693,13 @@ class ImportPayslipsWizard(models.TransientModel):
         # used only to build the "Department Summary" sheet — the main
         # sheet itself is one flat badge-sorted list (no grouping).
         dept_summary = {}
-        # Employees with under 6 pay days this period are pulled out of the
-        # main list and reported on their own sheet. net_salary == 0 isn't
-        # used for this: a normal full-attendance employee can also land at
-        # net 0 purely from an advance/penalty deduction, which would be a
+        # Employees with 0 pay days this period are pulled out of the main
+        # list and reported on their own sheet; anyone with at least some
+        # pay days stays on the main sheet. net_salary == 0 isn't used for
+        # this: a normal full-attendance employee can also land at net 0
+        # purely from an advance/penalty deduction, which would be a
         # contradictory reason to call them "low attendance".
-        MIN_PAY_DAYS_FOR_MAIN_SHEET = 6
+        LOW_ATTENDANCE_MAX_PAY_DAYS = 0
 
         # Joining cycle: 26th of the previous month through the 25th of
         # this month — the company's joining cutoff, not the calendar
@@ -1721,13 +1722,12 @@ class ImportPayslipsWizard(models.TransientModel):
             return (emp.id in react_ids
                     or bool(joined and c_from <= joined <= c_to))
 
-        # Under MIN_PAY_DAYS_FOR_MAIN_SHEET pay days normally means Low
-        # Attendance. New joiners / reactivated employees are expected to
-        # have few days in their first cycle, so they stay on the main
-        # sheet — unless their net pay is 0, then nothing is payable and
-        # they go to Low Attendance like everyone else.
+        # 0 pay days normally means Low Attendance. New joiners /
+        # reactivated employees stay on the main sheet even then if they
+        # still have net pay (e.g. last-month days) — only with 0 net pay
+        # do they go to Low Attendance like everyone else.
         def _is_low_attendance(slip, pay_days, c_from, c_to, react_ids):
-            if pay_days >= MIN_PAY_DAYS_FOR_MAIN_SHEET:
+            if pay_days > LOW_ATTENDANCE_MAX_PAY_DAYS:
                 return False
             if _is_new_or_reactivated(slip.employee_id, c_from, c_to, react_ids):
                 return slip.net_salary <= 0
@@ -1861,7 +1861,7 @@ class ImportPayslipsWizard(models.TransientModel):
         ws.write(row, IDX['LAST MONTH'], 'CHECKED BY', sig_fmt)
         ws.write(row, IDX['Net Pay'], 'APPROVED BY', sig_fmt)
 
-        # ── Low Attendance sheet — employees with under 6 pay days this
+        # ── Low Attendance sheet — employees with 0 pay days this
         #    period, kept out of the main list. New joiners / reactivated
         #    employees only land here with 0 net pay, and are highlighted.
         #    ─────────────────────────────────────────────────────────────
@@ -1870,7 +1870,7 @@ class ImportPayslipsWizard(models.TransientModel):
             zw.set_column(i, i, w)
         zw.merge_range(
             0, 0, 1, len(COLS) - 1,
-            f"Employees with Under {MIN_PAY_DAYS_FOR_MAIN_SHEET} Pay Days  |  "
+            f"Employees with {LOW_ATTENDANCE_MAX_PAY_DAYS} Pay Days  |  "
             f"{month_start.strftime('%B %Y')}",
             title_fmt,
         )
@@ -1950,8 +1950,8 @@ class ImportPayslipsWizard(models.TransientModel):
         zw.write(zrow, IDX['SER NO'], '', hl_cell_fmt)
         zw.write(zrow, IDX['ID NO'],
                  f"New joiner / reactivated ({new_joiner_from.strftime('%d %b')} – "
-                 f"{new_joiner_to.strftime('%d %b')}) with under "
-                 f"{MIN_PAY_DAYS_FOR_MAIN_SHEET} pay days and 0 net pay")
+                 f"{new_joiner_to.strftime('%d %b')}) with "
+                 f"{LOW_ATTENDANCE_MAX_PAY_DAYS} pay days and 0 net pay")
 
         # ── New Joiners sheet — employees whose contract started within
         #    this joining cycle, purely informational: they stay on the

@@ -10,10 +10,10 @@ except ImportError:
     xlsxwriter = None
 
 # Same threshold as the Payroll Worksheet export (ImportPayslipsWizard) —
-# employees below this many pay days are "Low Attendance" and are left
-# out of that export's Department Summary. This report uses the same
-# population so the two reconcile against each other.
-MIN_PAY_DAYS_FOR_MAIN_SHEET = 6
+# employees with this many pay days or fewer (i.e. 0) are "Low Attendance"
+# and are left out of that export's Department Summary. This report uses
+# the same population so the two reconcile against each other.
+LOW_ATTENDANCE_MAX_PAY_DAYS = 0
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -21,7 +21,7 @@ MIN_PAY_DAYS_FOR_MAIN_SHEET = 6
 # ═══════════════════════════════════════════════════════════════════
 #
 # For the chosen month, one row per department (main employees only —
-# same "pay_days >= 6" population as the Payroll Worksheet export's
+# same "pay_days > 0" population as the Payroll Worksheet export's
 # Department Summary, so Low Attendance employees don't skew this):
 #   - employee count
 #   - total attendance bonus
@@ -48,7 +48,7 @@ class PayrollBonusDeductionReportWizard(models.TransientModel):
     def _pay_days(self, slip):
         """Same pay_days formula as ImportPayslipsWizard's Department
         Summary — used only to exclude Low Attendance employees
-        (pay_days < 6) from this report, same population it uses.
+        (0 pay days) from this report, same population it uses.
         """
         emp = slip.employee_id
         dept_eligible = emp.is_attendance_bonus_eligible()
@@ -94,7 +94,7 @@ class PayrollBonusDeductionReportWizard(models.TransientModel):
         # ── aggregate per department, main employees only ───────────
         dept_totals = {}
         for slip in payslips:
-            if self._pay_days(slip) < MIN_PAY_DAYS_FOR_MAIN_SHEET:
+            if self._pay_days(slip) <= LOW_ATTENDANCE_MAX_PAY_DAYS:
                 continue  # Low Attendance — excluded, same as the Payroll Worksheet export
 
             emp = slip.employee_id
@@ -108,7 +108,7 @@ class PayrollBonusDeductionReportWizard(models.TransientModel):
 
         if not dept_totals:
             raise UserError(
-                f"No main employees (pay_days >= {MIN_PAY_DAYS_FOR_MAIN_SHEET}) "
+                f"No main employees (pay_days > {LOW_ATTENDANCE_MAX_PAY_DAYS}) "
                 f"found for {month_start.strftime('%B %Y')}."
             )
 
