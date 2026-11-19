@@ -153,7 +153,10 @@ class ZkAttendanceProcessor(models.Model):
                     'error_msg': 'Ignored: within 15-minute debounce of check-in',
                 })
                 return
-            elif diff_minutes < 360:
+            # Fridays (Asia/Dhaka, by the check-in's local date) are short
+            # days, so the 6-hour minimum doesn't apply — any punch after the
+            # debounce is a checkout.
+            elif diff_minutes < 360 and self._local_date(open_att.check_in).weekday() != 4:
                 punch.write({
                     'state': 'error',
                     'error_msg': 'Inside 6 hours',
