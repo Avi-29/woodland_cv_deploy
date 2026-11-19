@@ -28,6 +28,7 @@ Long description of module's purpose
         'views/shift_views.xml',
         'views/hr_section_views.xml',
         'views/hr_attendance_inherit.xml',
+        'views/hr_attendance_create_log_views.xml',
         'views/hr_swap_views.xml',
         'views/id_card.xml',
         'wizard/id_card_batch.xml',

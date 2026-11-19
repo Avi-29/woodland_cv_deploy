@@ -2,6 +2,7 @@ from . import shift
 from . import res_config_settings
 from . import attendance_processor
 from . import hr_attendance_inherit
+from . import hr_attendance_create_log
 from . import hr_employee_dayoff_history
 from . import hr_section
 from . import hr_employee_inherit

@@ -30,6 +30,23 @@ class HrAttendance(models.Model):
         index=True,
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Who may create is enforced by ir.model.access (create is granted to
+        # HR Super Admin only); this just records every creation that got through.
+        records = super().create(vals_list)
+        source = self.env.context.get('attendance_log_source') or 'manual'
+        self.env['hr.attendance.create.log'].sudo().create([{
+            'attendance_id': rec.id,
+            'employee_id': rec.employee_id.id,
+            'employee_name': rec.employee_id.name,
+            'user_id': self.env.uid,
+            'check_in': rec.check_in,
+            'check_out': rec.check_out,
+            'source': source,
+        } for rec in records])
+        return records
+
     @api.onchange('check_in', 'shift_id')
     def _onchange_shift_checkin(self):
         dhaka_tz = pytz.timezone('Asia/Dhaka')

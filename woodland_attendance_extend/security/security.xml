@@ -12,6 +12,16 @@
         <field name="privilege_id" ref="hr.res_groups_privilege_employees"/>
         <field name="implied_ids" eval="[(4, ref('hr.group_hr_manager'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
-        <field name="comment">HR Administrator plus Change Wage and Remove Late.</field>
+        <field name="comment">HR Administrator plus Change Wage, Remove Late and Create Attendance.</field>
+    </record>
+
+    <!-- Super Admin is the only group with create on hr.attendance (see
+         ir.model.access.csv). Group rules are OR-ed, so this lets a Super Admin
+         who is only an Attendance Officer still create for any employee. -->
+    <record id="hr_attendance_rule_super_admin" model="ir.rule">
+        <field name="name">HR Super Admin: Full access to attendances</field>
+        <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('woodland_attendance_extend.group_hr_super_admin'))]"/>
     </record>
 </odoo>

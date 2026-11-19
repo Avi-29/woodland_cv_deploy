@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_hr_attendance_create_log_list" model="ir.ui.view">
+        <field name="name">hr.attendance.create.log.list</field>
+        <field name="model">hr.attendance.create.log</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Creation Log" create="0" edit="0" delete="0">
+                <field name="create_date" string="Created On"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="employee_id"/>
+                <field name="employee_name" optional="hide"/>
+                <field name="check_in"/>
+                <field name="check_out" optional="show"/>
+                <field name="source"/>
+                <field name="attendance_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_attendance_create_log_form" model="ir.ui.view">
+        <field name="name">hr.attendance.create.log.form</field>
+        <field name="model">hr.attendance.create.log</field>
+        <field name="arch" type="xml">
+            <form string="Attendance Creation Log" create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="create_date" string="Created On"/>
+                            <field name="user_id"/>
+                            <field name="source"/>
+                        </group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="employee_name"/>
+                            <field name="check_in"/>
+                            <field name="check_out"/>
+                            <field name="attendance_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hr_attendance_create_log_search" model="ir.ui.view">
+        <field name="name">hr.attendance.create.log.search</field>
+        <field name="model">hr.attendance.create.log</field>
+        <field name="arch" type="xml">
+            <search string="Attendance Creation Log">
+                <field name="user_id"/>
+                <field name="employee_id"/>
+                <field name="employee_name"/>
+                <filter name="filter_manual" string="Manual" domain="[('source', '=', 'manual')]"/>
+                <filter name="filter_not_biometric" string="Not Biometric"
+                        domain="[('source', '!=', 'biometric')]"/>
+                <separator/>
+                <filter name="filter_create_date" string="Created On" date="create_date"/>
+                <group>
+                    <filter name="group_user" string="Created By" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_employee" string="Employee" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_source" string="Source" context="{'group_by': 'source'}"/>
+                    <filter name="group_day" string="Day" context="{'group_by': 'create_date:day'}"/>
+                </group>
+                <searchpanel>
+                    <field name="user_id" string="Created By" icon="fa-user" enable_counters="1"/>
+                    <field name="source" icon="fa-sign-in" enable_counters="1"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hr_attendance_create_log" model="ir.actions.act_window">
+        <field name="name">Attendance Creation Log</field>
+        <field name="res_model">hr.attendance.create.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_hr_attendance_create_log_search"/>
+    </record>
+
+    <menuitem id="menu_hr_attendance_create_log"
+              name="Creation Log"
+              parent="hr_attendance.menu_hr_attendance_root"
+              action="action_hr_attendance_create_log"
+              groups="woodland_attendance_extend.group_hr_super_admin"
+              sequence="15"/>
+</odoo>

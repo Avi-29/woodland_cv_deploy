@@ -235,7 +235,7 @@ class ZkAttendanceProcessor(models.Model):
             is_late = local_punch_naive > late_after
 
 
-        self.env['hr.attendance'].create({
+        self.env['hr.attendance'].with_context(attendance_log_source='biometric').create({
             'employee_id': employee.id,
             'check_in': punch.punch_time,
             'shift_id': shift.id if shift else False,

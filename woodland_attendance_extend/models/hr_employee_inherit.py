@@ -20,6 +20,14 @@ class HrEmployee(models.Model):
              "12-hour shifts. This resolves check-in window overlaps at boundaries "
              "between those two shifts."
     )
+
+    def _attendance_action_change(self, geo_information=None):
+        # Tag the creation log with where the check-in came from (mobile/kiosk/systray).
+        mode = (geo_information or {}).get('mode')
+        source = mode if mode in ('mobile', 'kiosk', 'systray') else 'system'
+        return super(HrEmployee, self.with_context(attendance_log_source=source)
+                     )._attendance_action_change(geo_information)
+
     section_id = fields.Many2one(
         'hr.section', string="Section", index=True, tracking=True,
         domain="['|', ('department_id', '=', False), ('department_id', '=', department_id)]")
