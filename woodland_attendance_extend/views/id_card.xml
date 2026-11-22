@@ -95,7 +95,7 @@
                 <svg width="6mm" height="94.8mm" viewBox="0 0 70 1120" style="position:absolute; left:1.32mm; top:3.36mm;">
                     <text x="35" y="560" text-anchor="middle" transform="rotate(-90 35 560)"
                           font-size="34" font-style="italic" font-weight="bold" fill="#111"
-                          font-family="Arial, Helvetica, sans-serif">Date of join: <t t-esc="doc.contract_date_start"/></text>
+                          font-family="Arial, Helvetica, sans-serif">Date of issue: <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d-%m-%Y')"/></text>
                 </svg>
                 <svg width="6mm" height="94.8mm" viewBox="0 0 70 1120" style="position:absolute; right:1.32mm; top:3.36mm;">
                     <text x="35" y="560" text-anchor="middle" transform="rotate(90 35 560)"
@@ -150,7 +150,7 @@
             <div class="idc-card">
                 <div class="idc-legal">
                     This card is issued for limited purpose on behalf of
-                    <t t-esc="doc.company_id.name or ''"/> only and the authorities concerned are
+                    Woodland Plywood and Particle Board Mills Ltd. only and the authorities concerned are
                     requested to extend all sorts of cooperation in professional work of the card
                     holder. The company will not be liable for any immoral, illegal or subversive
                     activity of the card holder.
@@ -168,10 +168,10 @@
                 </div>
 
                 <div class="idc-addr">
-                    <t t-esc="'150,Moshan, Baruipara'"/><br/>
-                    <t t-esc="'Mirpur, Kushtia-7000'"/><br/>
+                    <t t-esc="'Dadapur Road, Jugia, Kushtia-7000'"/><br/>
                     <span class="label">Phone:</span> <t t-esc="doc.company_id.phone or ''"/><br/>
-                    <span class="label">Email:</span> <t t-esc="doc.company_id.email or ''"/>
+                    <span class="label">Email:</span> <t t-esc="doc.company_id.email or ''"/><br/>
+                    <span class="label">Website:</span> <t t-esc="'www.woodlandbd.com'"/>
                 </div>
 
                 <div class="idc-personal">
